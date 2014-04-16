@@ -1,5 +1,3 @@
-from django.db import models
-
 """ GTFS entities.
 
 These are the entities returned by the various :py:mod:`pygtfs.schedule` lists.
@@ -8,417 +6,327 @@ when possible relations are taken into account, e.g. a :py:class:`Route` class
 has a `trips` attribute, with a list of trips for the specific route.
 
 """
-
-
-def _validate_date(*field_names):
-    @validates(*field_names)
-    def make_date(self, key, value):
-        return datetime.datetime.strptime(value, '%Y%m%d').date()
-
-    return make_date
-
-
-def _validate_time_delta(*field_names):
-    @validates(*field_names)
-    def time_delta(self, key, value):
-        (hours, minutes, seconds) = map(int, re.split(':', value))
-        return datetime.timedelta(hours=hours, minutes=minutes, seconds=seconds)
-
-    return time_delta
-
-
-def _validate_int_bool(*field_names):
-    @validates(*field_names)
-    def int_bool(self, key, value):
-        assert value in ["0", "1"], "value must be 0 or 1"
-        return bool(int(value))
-
-    return int_bool
-
-
-def _validate_int_choice(int_choice, *field_names):
-    @validates(*field_names)
-    def in_range(self, key, value):
-        if ((value is None) or (value == '')):
-            if (None in int_choice):
-                return None
-            else:
-                raise ValueError("Empty value not allowed in {0}".format(key))
-        else:
-            int_value = int(value)
-        assert int_value in int_choice, "value outside limits"
-        return int_value
-
-    return in_range
-
-
-def _validate_float_range(float_min, float_max, *field_names):
-    @validates(*field_names)
-    def in_range(self, key, value):
-        float_value = float(value)
-        assert float_min <= float_value <= float_max, "value outside limits"
-        return float_value
-
-    return in_range
-
-
-def create_foreign_keys(*key_names):
-    """ Create foreign key constraints, always including feed_id,
-        and relying on convention that key name is the same"""
-    constraints = []
-    for key in key_names:
-        table, field = key.split('.')
-        constraints.append(
-            ForeignKeyConstraint(["feed_id", field], [table + ".feed_id", key]))
-    return tuple(constraints)
-
-
-class Feed(Base):
-    __tablename__ = '_feed'
-    _plural_name_ = 'feeds'
-    feed_id = Column(Integer, primary_key=True)
-    id = synonym('feed_id')
-    feed_name = Column(Unicode)
-    feed_append_date = Column(Date, nullable=True)
-
-
-    # these relationships will allow us to delete entire feeds at once
-    # by deleting a feed (because of 'cascading')
-
-    agencies = relationship("Agency", backref=("feed"),
-                            cascade="all, delete-orphan")
-    stops = relationship("Stop", backref=("feed"), cascade="all, delete-orphan")
-    routes = relationship("Route", backref=("feed"),
-                          cascade="all, delete-orphan")
-    trips = relationship("Trip", backref=("feed"), cascade="all, delete-orphan")
-    stop_times = relationship("StopTime", backref=("feed"),
-                              cascade="all, delete-orphan")
-    services = relationship("Service", backref=("feed"),
-                            cascade="all, delete-orphan")
-    service_exceptions = relationship("ServiceException", backref=("feed"),
-                                      cascade="all, delete-orphan")
-    fares = relationship("Fare", backref=("feed"), cascade="all, delete-orphan")
-    fare_rules = relationship("FareRule", backref=("feed"),
-                              cascade="all, delete-orphan")
-    shape_points = relationship("ShapePoint", backref=("feed"),
-                                cascade="all, delete-orphan")
-    frequencies = relationship("Frequency", backref=("feed"),
-                               cascade="all, delete-orphan")
-    transfers = relationship("Transfer", backref=("feed"),
-                             cascade="all, delete-orphan")
-    feedinfo = relationship("FeedInfo", backref=("feed"),
-                            cascade="all, delete-orphan")
-
-    def __repr__(self):
-        return '<Feed %s: %s>' % (self.feed_id, self.feed_name)
-
-
-class Agency(Base):
-    __tablename__ = 'agency'
-    _plural_name_ = 'agencies'
-    feed_id = Column(Integer, ForeignKey('_feed.feed_id'), primary_key=True)
-    agency_id = Column(Unicode, primary_key=True, default=u"None", index=True)
-    id = synonym('agency_id')
-    agency_name = Column(Unicode)
-    agency_url = Column(Unicode)
-    agency_timezone = Column(Unicode)  #### pytz.timezone????
-    agency_lang = Column(Unicode, nullable=True)
-    agency_phone = Column(Unicode, nullable=True)
-    agency_fare_url = Column(Unicode, nullable=True)
-
-    routes = relationship("Route", backref="agency")
-
-    def __repr__(self):
-        return '<Agency %s: %s>' % (self.agency_id, self.agency_name)
-
-
-class Stop(Base):
-    __tablename__ = 'stops'
-    _plural_name_ = 'stops'
-    feed_id = Column(Integer, ForeignKey('_feed.feed_id'), primary_key=True)
-    stop_id = Column(Unicode, primary_key=True, index=True)
-    id = synonym('stop_id')
-    stop_code = Column(Unicode, nullable=True, index=True)
-    stop_name = Column(Unicode)
-    stop_desc = Column(Unicode, nullable=True)
-    stop_lat = Column(Float)
-    stop_lon = Column(Float)
-    zone_id = Column(Unicode, nullable=True)
-    stop_url = Column(Unicode, nullable=True)
-    location_type = Column(Integer, nullable=True)
-    parent_station = Column(Integer, nullable=True)
-    stop_timezone = Column(Unicode, nullable=True)
-    wheelchair_boarding = Column(Integer, nullable=True)
-
-    stop_times = relationship('StopTime', backref="stop")
-    transfers_to = relationship('Transfer', backref="stop_to",
-                                foreign_keys='Transfer.to_stop_id')
-    transfers_from = relationship('Transfer', backref="stop_from",
-                                  foreign_keys='Transfer.from_stop_id')
-
-    _validate_location = _validate_int_choice([None, 0, 1], 'location_type')
-    _validate_wheelchair = _validate_int_choice([0, 1, 2],
-                                                'wheelchair_boarding')
-    _validate_lon_lat = _validate_float_range(-180, 180, 'stop_lon', 'stop_lat')
-
-    def __repr__(self):
-        return '<Stop %s: %s>' % (self.stop_id, self.stop_name)
-
-
-class Route(Base):
-    __tablename__ = 'routes'
-    _plural_name_ = 'routes'
-    feed_id = Column(Integer, ForeignKey('_feed.feed_id'), primary_key=True)
-    route_id = Column(Unicode, primary_key=True, index=True)
-    id = synonym('route_id')
-    agency_id = Column(Unicode, default=u"None")
-    route_short_name = Column(Unicode)
-    route_long_name = Column(Unicode)
-    route_desc = Column(Unicode, nullable=True)
-    route_type = Column(Integer)
-    route_url = Column(Unicode, nullable=True)
-    route_color = Column(Unicode, nullable=True)
-    route_text_color = Column(Unicode, nullable=True)
-
-    __table_args__ = create_foreign_keys('agency.agency_id')
-
-    trips = relationship("Trip", backref="route")
-    fare_rules = relationship("FareRule", backref="route")
-
-    _validate_route_type = _validate_int_choice(range(8), 'route_type')
-
-    def __repr__(self):
-        return '<Route %s: %s>' % (self.route_id, self.route_short_name)
-
-
-class Trip(Base):
-    __tablename__ = 'trips'
-    _plural_name_ = 'trips'
-    feed_id = Column(Integer, ForeignKey('_feed.feed_id'), primary_key=True)
-    route_id = Column(Unicode)
-    service_id = Column(Unicode)
-    trip_id = Column(Unicode, primary_key=True, index=True)
-    id = synonym('trip_id')
-    trip_headsign = Column(Unicode, nullable=True)
-    trip_short_name = Column(Unicode, nullable=True)
-    direction_id = Column(Integer, nullable=True)
-    block_id = Column(Unicode, nullable=True)
-    shape_id = Column(Unicode, nullable=True)
-    wheelchair_accessible = Column(Integer, nullable=True)
-
-    stop_times = relationship("StopTime", backref="trip")
-    frequencies = relationship("Frequency", backref="trip")
-
-    __table_args__ = create_foreign_keys('routes.route_id',
-                                         'calendar.service_id',
-                                         'calendar_dates.service_id',
-                                         'shapes.shape_id')
-
-    _validate_direction_id = _validate_int_choice([None, 0, 1], 'direction_id')
-    _validate_wheelchair = _validate_int_choice([0, 1, 2],
-                                                'wheelchair_accessible')
-
-    def __repr__(self):
-        return '<Trip %s>' % self.trip_id
-
-
-class StopTime(Base):
-    __tablename__ = 'stop_times'
-    _plural_name_ = 'stop_times'
-    feed_id = Column(Integer, ForeignKey('_feed.feed_id'), primary_key=True)
-    trip_id = Column(Unicode, primary_key=True)
-    arrival_time = Column(Interval)
-    departure_time = Column(Interval)
-    stop_id = Column(Unicode, primary_key=True)
-    stop_sequence = Column(Integer, primary_key=True)
-    stop_headsign = Column(Unicode)
-    pickup_type = Column(Integer)
-    drop_off_type = Column(Integer)
-    shape_dist_traveled = Column(Integer)
-
-    __table_args__ = create_foreign_keys('trips.trip_id', 'stops.stop_id')
-
-    _validate_pickup_drop_off = _validate_int_choice([None, 0, 1, 2, 3],
-                                                     'pickup_type',
-                                                     'drop_off_type')
-    _validate_arrival_departure = _validate_time_delta('arrival_time',
-                                                       'departure_time')
-
-    def __repr__(self):
-        return '<StopTime %s: %d>' % (self.trip_id, self.stop_sequence)
-
-
-class Service(Base):
-    __tablename__ = 'calendar'
-    _plural_name_ = 'services'
-    feed_id = Column(Integer, ForeignKey('_feed.feed_id'), primary_key=True)
-    service_id = Column(Unicode, primary_key=True, index=True)
-    id = synonym('service_id')
-    monday = Column(Boolean)
-    tuesday = Column(Boolean)
-    wednesday = Column(Boolean)
-    thursday = Column(Boolean)
-    friday = Column(Boolean)
-    saturday = Column(Boolean)
-    sunday = Column(Boolean)
-    start_date = Column(Date)
-    end_date = Column(Date)
-
-    trips = relationship("Trip", backref="service")
-
-    _validate_bools = _validate_int_bool('monday', 'tuesday', 'wednesday',
-                                         'thursday', 'friday', 'saturday',
-                                         'sunday')
-    _validate_dates = _validate_date('start_date', 'end_date')
-
-    def __repr__(self):
-        dayofweek = ''
-        if self.monday: dayofweek += 'M'
-        if self.tuesday: dayofweek += 'T'
-        if self.wednesday: dayofweek += 'W'
-        if self.thursday: dayofweek += 'Th'
-        if self.friday: dayofweek += 'F'
-        if self.saturday: dayofweek += 'S'
-        if self.sunday: dayofweek += 'Su'
-        return '<Service %s (%s)>' % (self.service_id, dayofweek)
-
-
-class ServiceException(Base):
-    __tablename__ = 'calendar_dates'
-    _plural_name_ = 'service_excpetions'
-    feed_id = Column(Integer, ForeignKey('_feed.feed_id'), primary_key=True)
-    service_id = Column(Unicode, primary_key=True, index=True)
-    id = synonym('service_id')
-    date = Column(Date, primary_key=True)
-    exception_type = Column(Integer)
-
-    _validate_exception_type = _validate_int_choice([1, 2], 'exception_type')
-    _validate_dates = _validate_date('date')
-
-    def __repr__(self):
-        return '<ServiceException %s: %s>' % (self.service_id, self.date)
-
-
-class Fare(Base):
-    __tablename__ = 'fare_attributes'
-    _plural_name_ = 'fares'
-    feed_id = Column(Integer, ForeignKey('_feed.feed_id'), primary_key=True)
-    fare_id = Column(Unicode, primary_key=True, index=True)
-    id = synonym('fare_id')
-    price = Column(Numeric)
-    currency_type = Column(Unicode)
-    payment_method = Column(Integer)
-    transfers = Column(Integer,
-                       nullable=True)  # it is required, but allowed to be empty
-    transfer_duration = Column(Integer, nullable=True)
-
-    _validate_payment_method = _validate_int_choice([0, 1], 'payment_method')
-    _validate_transfers = _validate_int_choice([None, 0, 1, 2], 'transfers')
-
-    def __repr__(self):
-        return '<Fare %s>' % self.fare_id
-
-
-class FareRule(Base):
-    __tablename__ = 'fare_rules'
-    _plural_name_ = 'fare_rules'
-    feed_id = Column(Integer, ForeignKey('_feed.feed_id'), primary_key=True)
-    fare_id = Column(Unicode, primary_key=True)
-    route_id = Column(Unicode, nullable=True, primary_key=True)
-    origin_id = Column(Unicode, ForeignKey('stops.zone_id'), nullable=True,
-                       primary_key=True)
-    destination_id = Column(Unicode, ForeignKey('stops.zone_id'), nullable=True,
-                            primary_key=True)
-    contains_id = Column(Unicode, ForeignKey('stops.zone_id'), nullable=True,
-                         primary_key=True)
-    __table_args__ = create_foreign_keys('fare_attributes.fare_id',
-                                         'routes.route_id')
-
-    def __repr__(self):
-        return '<FareRule %s: %s %s %s %s>' % (self.fare_id,
-                                               self.route_id,
-                                               self.origin_id,
-                                               self.destination_id,
-                                               self.contains_id)
-
-
-class ShapePoint(Base):
-    __tablename__ = 'shapes'
-    _plural_name_ = 'shapes'
-    feed_id = Column(Integer, ForeignKey('_feed.feed_id'), primary_key=True)
-    shape_id = Column(Unicode, primary_key=True)
-    shape_pt_lat = Column(Float)
-    shape_pt_lon = Column(Float)
-    shape_pt_sequence = Column(Integer, primary_key=True)
-    shape_dist_traveled = Column(Float)
-
-    trips = relationship("Trip", backref="shape_points")
-
-    _validate_lon_lat = _validate_float_range(-180, 180, 'shape_pt_lon',
-                                              'shape_pt_lat')
-
-    def __repr__(self):
-        return '<ShapePoint %s>' % self.shape_id
-
-
-class Frequency(Base):
-    __tablename__ = 'frequencies'
-    _plural_name_ = 'frequencies'
-    feed_id = Column(Integer, ForeignKey('_feed.feed_id'), primary_key=True)
-    trip_id = Column(Unicode, primary_key=True)
-    start_time = Column(Interval, primary_key=True)
-    end_time = Column(Interval, primary_key=True)
-    headway_secs = Column(Integer)
-    exact_times = Column(Integer, nullable=True)
-
-    __table_args__ = create_foreign_keys('trips.trip_id')
-
-    _validate_exact_times = _validate_int_choice([None, 0, 1], 'exact_times')
-    _validate_deltas = _validate_time_delta('start_time', 'end_time')
-
-    def __repr__(self):
-        return '<Frequency %s %s-%s>' % (
-        self.trip_id, self.start_time, self.end_time)
-
-
-class Transfer(Base):
-    __tablename__ = 'transfers'
-    _plural_name_ = 'transfers'
-    feed_id = Column(Integer, ForeignKey('_feed.feed_id'), primary_key=True)
-    from_stop_id = Column(Unicode, ForeignKey('stops.stop_id'),
-                          primary_key=True)
-    to_stop_id = Column(Unicode, ForeignKey('stops.stop_id'), primary_key=True)
-    transfer_type = Column(Integer,
-                           nullable=True)  # required but empty is allowed
-    min_transfer_time = Column(Integer, nullable=True)
-
-    _validate_transfer_type = _validate_int_choice([None, 0, 1, 2, 3],
-                                                   'transfer_type')
-
-    def __repr__(self):
-        return "<Transfer %s-%s>" % (self.from_stop_id, self.to_stop_id)
-
-
-class FeedInfo(Base):
-    __tablename__ = 'feed_info'
-    _plural_name_ = 'feed_infos'
-    feed_id = Column(Integer, ForeignKey('_feed.feed_id'), primary_key=True)
-    feed_publisher_name = Column(Unicode, primary_key=True)
-    feed_publisher_url = Column(Unicode, primary_key=True)
-    feed_lang = Column(Unicode)
-    feed_start_date = Column(Date, nullable=True)
-    feed_end_date = Column(Date, nullable=True)
-    feed_version = Column(Unicode, nullable=True)
-
-    _validate_start_end = _validate_date('feed_start_date', 'feed_end_date')
-
-    def __repr__(self):
-        return "<FeedInfo %s>" % self.feed_publisher_name
-
-
-# a feed can skip Service (calendar) if it has ServiceException (calendar_dates)
-
-gtfs_required = [Agency, Stop, Route, Trip, StopTime]
-gtfs_calendar = [Service, ServiceException]
-gtfs_not_required = [Fare, FareRule, ShapePoint, Frequency, Transfer, FeedInfo]
-gtfs_all = gtfs_required + gtfs_calendar + gtfs_not_required
+from django.contrib.gis.db import models
+
+
+class Agency(models.Model):
+    """
+    Model object representing an Agency (agency.txt).
+    """
+
+    """
+    The agency_id field is an ID that uniquely identifies a transit agency.
+    A transit feed may represent data from more than one agency. The agency_id
+    is dataset unique. This field is optional for transit feeds that only contain
+    data for a single agency.
+    """
+    agency_id = models.CharField(max_length=255, null=True, blank=True)
+
+    """
+    The agency_name field contains the full name of the transit agency.
+    Google Maps will display this name.
+    """
+    name = models.TextField()
+
+    """
+    The agency_url field contains the URL of the transit agency
+    """
+    url = models.URLField()
+
+    """
+    The agency_timezone field contains the timezone where the transit
+    agency is located. Timezone names never contain the space character
+    but may contain an underscore. Please refer to
+    http://en.wikipedia.org/wiki/List_of_tz_zones for a list of valid
+    values. If multiple agencies are specified in the feed, each must
+    have the same agency_timezone.
+    """
+    timezone = models.CharField(max_length=255)
+
+    """ Optional
+    The agency_lang field contains a two-letter ISO 639-1 code for the
+    primary language used by this transit agency. The language code is
+    case-insensitive (both en and EN are accepted). This setting defines
+    capitalization rules and other language-specific settings for all
+    text contained in this transit agency's feed. Please refer to
+    http://www.loc.gov/standards/iso639-2/php/code_list.php for a
+    list of valid values.
+    """
+    lang = models.CharField(max_length=2, null=True, blank=True)
+
+    """ Optional
+    The agency_phone field contains a single voice telephone number for
+    the specified agency. This field is a string value that presents the
+    telephone number as typical for the agency's service area. It can and
+    should contain punctuation marks to group the digits of the number.
+    Dialable text (for example, TriMet's "503-238-RIDE") is permitted,
+    but the field must not contain any other descriptive text.
+     """
+    phone = models.CharField(max_length=255, null=True, blank=True)
+
+    """ Optional
+    The agency_fare_url specifies the URL of a web page that allows a
+    rider to purchase tickets or other fare instruments for that agency online.
+    """
+    fare_url = models.URLField(null=True, blank=True)
+
+
+class Zone(models.Model):
+    """
+    Define the fare zone.
+    """
+    zone_id = models.CharField(max_length=255, unique=True)
+
+
+class Stop(models.Model):
+    stop_id = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=255)
+    url = models.URLField()
+    desc = models.TextField(null=True, blank=True)
+    geopoint = models.PointField(null=True, blank=True)
+    code = models.CharField(max_length=255, null=True, blank=True)
+    zone = models.ForeignKey(Zone, null=True, blank=True)
+    location_type = models.IntegerField(null=True,
+                                        blank=True)  #TODO add choices for 0=blank=Stop and 1=Station
+    parent_station = models.ForeignKey('self', null=True, blank=True)
+    objects = models.GeoManager()
+
+
+class RouteType(models.Model):
+    """
+    Referential data.
+    """
+    name = models.CharField(max_length=50)
+    description = models.TextField()
+    value = models.IntegerField(unique=True)
+
+
+class Route(models.Model):
+    """
+    The route_id field contains an ID that uniquely identifies a route.
+    The route_id is dataset unique.
+    """
+    route_id = models.CharField(max_length=255, unique=True)
+    agency = models.ForeignKey(Agency, null=True, blank=True)
+
+    """
+    The route_short_name contains the short name of a route.
+    This will often be a short, abstract identifier like "32",
+    "100X", or "Green" that riders use to identify a route,
+    but which doesn't give any indication of what places the
+    route serves. If the route does not have a short name,
+    please specify a route_long_name and use an empty string
+    as the value for this field.
+    """
+    short_name = models.CharField(max_length=255)
+
+    """
+    The route_long_name contains the full name of a route.
+    This name is generally more descriptive than the
+    route_short_name and will often include the route's
+    destination or stop. If the route does not have a
+    long name, please specify a route_short_name and
+    use an empty string as the value for this field.
+    """
+    long_name = models.TextField()
+
+    """ Optional
+    The route_desc field contains a description of a route.
+    Please provide useful, quality information. Do not
+    simply duplicate the name of the route. For example,
+    "A trains operate between Inwood-207 St, Manhattan
+    and Far Rockaway-Mott Avenue, Queens at all times.
+    Also from about 6AM until about midnight, additional
+    A trains operate between Inwood-207 St and Lefferts
+    Boulevard (trains typically alternate between
+    Lefferts Blvd and Far Rockaway)."
+    """
+    desc = models.TextField(null=True, blank=True)
+
+    """
+    The route_type field describes the type of transportation
+    used on a route.
+    """
+    route_type = models.ForeignKey(RouteType)
+
+    """ Optional
+    The route_url field contains the URL of a web page
+    about that particular route
+    """
+    url = models.URLField(null=True, blank=True)
+
+    """ Optional
+    In systems that have colors assigned to routes, the route_color field
+    defines a color that corresponds to a route.
+    """
+    color = models.CharField(max_length=6, default="FFFFFF")
+
+    """
+    The route_text_color field can be used to
+    specify a legible color to use
+    for text drawn against a background of route_color
+    """
+    text_color = models.CharField(max_length=6, default="000000")
+
+
+class Service(models.Model):
+    service_id = models.CharField(max_length=255, unique=True)
+
+
+class Direction(models.Model):
+    """
+    Referential data.
+    """
+    name = models.CharField(max_length=20)
+    value = models.IntegerField(unique=True)
+
+
+class Block(models.Model):
+    block_id = models.CharField(max_length=255, unique=True)
+
+
+class Shape(models.Model):
+    """
+    Model object represeting a Shape (shapes.txt).
+    """
+    
+    shape_id = models.CharField(max_length=255)
+    geopoint = models.PointField()
+
+    """
+    The shape_pt_sequence field associates the latitude
+    and longitude of a shape point with its sequence
+    order along the shape. The values for
+    shape_pt_sequence must be non-negative integers,
+    and they must increase along the trip.
+
+    For example, if the shape "A_shp" has three points
+    in its definition, the shapes.txt file might contain
+    these rows to define the shape:
+
+    A_shp,37.61956,-122.48161,0
+    A_shp,37.64430,-122.41070,6
+    A_shp,37.65863,-122.30839,11
+    """
+    pt_sequence = models.IntegerField()
+    dist_traveled = models.FloatField(null=True, blank=True)
+    objects = models.GeoManager()
+
+
+
+class Trip(models.Model):
+    route = models.ForeignKey(Route)
+    service = models.ForeignKey(Service)
+    trip_id = models.CharField(max_length=255, unique=True)
+    headsign = models.TextField(null=True, blank=True)
+    direction = models.ForeignKey(Direction, null=True, blank=True)
+    block = models.ForeignKey(Block, null=True, blank=True)
+    shape_id = models.CharField(max_length=255, null=True, blank=True)
+
+
+class PickupType(models.Model):
+    """Referential data"""
+    name = models.CharField(max_length=255)
+    value = models.IntegerField()
+
+
+class DropOffType(models.Model):
+    """Referential data"""
+    name = models.CharField(max_length=255)
+    value = models.IntegerField()
+
+
+class StopTime(models.Model):
+    trip = models.ForeignKey(Trip)
+    arrival_time = models.TimeField()
+    departure_time = models.TimeField()
+    stop = models.ForeignKey(Stop)
+    stop_sequence = models.IntegerField()
+    headsign = models.TextField(null=True, blank=True)
+    pickup_type = models.ForeignKey(PickupType, null=True, blank=True)
+    drop_off_type = models.ForeignKey(DropOffType, null=True, blank=True)
+    shape_dist_traveled = models.FloatField(null=True, blank=True)
+
+
+class Calendar(models.Model):
+    """
+    Model object representing a service entry (calendar.txt).
+    """
+
+    """
+    The service_id contains an ID that uniquely identifies a
+    set of dates when service is available for one or
+    more routes.
+    """
+    service = models.ForeignKey(Service)
+
+    """
+    The monday field contains a binary value that indicates 
+    whether the service is valid for all Mondays.
+    """
+    monday = models.IntegerField()
+    tuesday = models.IntegerField()
+    wednesday = models.IntegerField()
+    thursday = models.IntegerField()
+    friday = models.IntegerField()
+    saturday = models.IntegerField()
+    sunday = models.IntegerField()
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+
+class ExceptionType(models.Model):
+    """Referential data"""
+    name = models.CharField(max_length=255)
+    value = models.IntegerField()
+
+
+class CalendarDate(models.Model):
+    service = models.ForeignKey(Service)
+    date = models.DateField()
+    exception_type = models.ForeignKey(ExceptionType)
+
+
+class Fare(models.Model):
+    fare_id = models.CharField(max_length=255, unique=True)
+
+
+class PaymentMethod(models.Model):
+    name = models.CharField(max_length=50)
+    vale = models.IntegerField()
+
+
+class FareAttribute(models.Model):
+    fare = models.ForeignKey(Fare)
+    price = models.FloatField()
+    currency = models.CharField(max_length=3)
+    payment_method = models.ForeignKey(PaymentMethod)
+    transfers = models.IntegerField(null=True, blank=True)
+    transfer_duration = models.IntegerField(null=True,
+                                            blank=True)  # duration in seconds
+
+
+class FareRule(models.Model):
+    fare = models.ForeignKey(Fare)
+    route = models.ForeignKey(Route, null=True, blank=True)
+    origin = models.ForeignKey(Zone, null=True, blank=True,
+                               related_name="origin")
+    destination = models.ForeignKey(Zone, null=True, blank=True,
+                                    related_name="destination")
+    contains = models.ForeignKey(Zone, null=True, blank=True,
+                                 related_name="contains")
+
+
+class Frequency(models.Model):
+    trip = models.ForeignKey(Trip)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    headway_secs = models.IntegerField()
+    exact_times = models.IntegerField(null=True, blank=True)
+
+
+class Transfer(models.Model):
+    from_stop = models.ForeignKey(Stop, related_name="from_stop")
+    to_stop = models.ForeignKey(Stop, related_name="to_stop")
+    transfer_type = models.IntegerField()
+    min_transfer_time = models.IntegerField(null=True, blank=True)
