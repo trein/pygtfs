@@ -55,7 +55,7 @@ LOGGING = {
         'django': {
             'handlers': HANDLER,
             'propagate': True,
-            'level': 'DEBUG',
+            'level': 'INFO',
         },
         'web': {
             'handlers': HANDLER,
@@ -114,6 +114,8 @@ DATABASES = {
         'HOST': ''
     }
 }
+
+POSTGIS_VERSION = (2, 1, 2)
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.6/topics/i18n/
