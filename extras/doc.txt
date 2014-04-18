@@ -1,0 +1,7 @@
+DB synchronization
+$ python manage.py syncdb
+$ python manage.py sql service
+
+Postgres/PostGIS
+createdb -T template_postgis pygtfs
+createlang plpgsql pygtfs

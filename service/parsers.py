@@ -27,7 +27,7 @@ class BaseParser(object):
 
     @staticmethod
     def parse(line):
-        raise Exception("Parser methods not implemented.")
+        raise ParserException("Parser methods not implemented.")
 
     @staticmethod
     def create_geopoint(lat, lng):
