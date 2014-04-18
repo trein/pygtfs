@@ -1,4 +1,4 @@
-from django.contrib.gis import admin
+from django.contrib.gis.admin import options
 from django.contrib import admin
 from service.models import Agency
 from service.models import Zone
@@ -23,8 +23,8 @@ from service.models import FareRule
 from service.models import Frequency
 from service.models import Transfer
 
-admin.site.register(Stop, admin.OSMGeoAdmin)
-admin.site.register(Shape, admin.OSMGeoAdmin)
+admin.site.register(Stop, options.OSMGeoAdmin)
+admin.site.register(Shape, options.OSMGeoAdmin)
 admin.site.register(Agency)
 admin.site.register(Zone)
 admin.site.register(RouteType)
