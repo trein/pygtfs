@@ -1,7 +1,9 @@
+from csv import DictReader
 from django.contrib.gis.geos import fromstr
 from service.models import *
 from datetime import time
 from datetime import date
+import os
 
 
 class ParserException(Exception):
@@ -15,28 +17,39 @@ def check_field(reader, field, optional=False):
         return reader[field]
     elif not optional:
         raise ParserException.for_message(
-            "Field %s was empty or non-present in file" % field)
+            'Field %s was empty or non-present in file' % field)
     return None
 
 
+class GtfsReader(object):
+    def __init__(self, root_dir, filename):
+        self.reader = DictReader(open(os.path.join(root_dir, filename), 'rb'))
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        return self.reader.next()
+
+
 class BaseParser(object):
-    def __init__(self, filename, optional=False, fields=[]):
+    def __init__(self, filename, optional=False, fields=()):
         self.filename = filename
         self.optional = optional
         self.fields = fields
 
     @staticmethod
     def parse(line):
-        raise ParserException("Parser methods not implemented.")
+        raise ParserException('Parser methods not implemented.')
 
     @staticmethod
     def create_geopoint(lat, lng):
-        return fromstr("POINT(%s %s)" % (float(lat), float(lng)))
+        return fromstr('POINT(%s %s)' % (float(lat), float(lng)))
 
 
 class CalendarDatesParser(BaseParser):
     def __init__(self):
-        BaseParser.__init__(self, "calendar_dates.txt", optional=True)
+        BaseParser.__init__(self, 'calendar_dates.txt', optional=True)
 
     @staticmethod
     def parse(line):
@@ -57,7 +70,7 @@ class CalendarDatesParser(BaseParser):
 
 class CalendarParser(BaseParser):
     def __init__(self):
-        BaseParser.__init__(self, "calendar.txt", optional=False)
+        BaseParser.__init__(self, 'calendar.txt')
 
     @staticmethod
     def parse(line):
@@ -85,7 +98,7 @@ class CalendarParser(BaseParser):
 
 class StopTimesParser(BaseParser):
     def __init__(self):
-        BaseParser.__init__(self, "stop_times.txt", optional=False)
+        BaseParser.__init__(self, 'stop_times.txt')
 
     @staticmethod
     def parse(line):
@@ -95,14 +108,14 @@ class StopTimesParser(BaseParser):
             (hour, minute, sec) = 0, 0, 0
         else:
             field = check_field(line, 'arrival_time')
-            (hour, minute, sec) = map(int, field.split(":"))
+            (hour, minute, sec) = map(int, field.split(':'))
         arrival_time = time(hour % 24, minute % 60, sec % 60)
 
         if check_field(line, 'departure_time', optional=True) is None:
             (hour, minute, sec) = 0, 0, 0
         else:
             field = check_field(line, 'departure_time')
-            (hour, minute, sec) = map(int, field.split(":"))
+            (hour, minute, sec) = map(int, field.split(':'))
         departure_time = time(hour % 24, minute % 60, sec % 60)
 
         trip = Trip.objects.get(trip_id=check_field(line, 'trip_id'))
@@ -136,7 +149,7 @@ class StopsParser(BaseParser):
               ('location_type', 'location_type')]
 
     def __init__(self):
-        BaseParser.__init__(self, "stops.txt", optional=False, fields=fields)
+        BaseParser.__init__(self, 'stops.txt', fields=StopsParser.fields)
 
     @staticmethod
     def parse(line):
@@ -160,8 +173,8 @@ class StopsParser(BaseParser):
         # check parent station
         if check_field(line, 'parent_station', optional=True):
             try:
-                stop_id = check_field(line, 'parent_station', optional=True)
-                stop.parent_station = Stop.objects.get(stop_id=stop_id)
+                parent_id = check_field(line, 'parent_station', optional=True)
+                stop.parent_station = Stop.objects.get(stop_id=parent_id)
             except Exception, e:
                 pass
         return stop, created
@@ -174,7 +187,7 @@ class RoutesParser(BaseParser):
               ('text_color', 'route_text_color')]
 
     def __init__(self):
-        BaseParser.__init__(self, "routes.txt", optional=False, fields=fields)
+        BaseParser.__init__(self, 'routes.txt', fields=RoutesParser.fields)
 
     @staticmethod
     def parse(line):
@@ -196,10 +209,10 @@ class RoutesParser(BaseParser):
                 agency_id = check_field(line, 'agency_id')
                 route.agency = Agency.objects.get(agency_id=agency_id)
             except Exception, e:
-                # raise ParserException("No agency with id %s "
+                # raise ParserException('No agency with id %s '
                 #                       % check_field(line, 'agency_id'))
                 self.stderr.write(
-                    "No agency with id %s " % check_field(line,
+                    'No agency with id %s ' % check_field(line,
                                                           'agency_id'))
         return route, created
 
@@ -209,7 +222,7 @@ class TripsParser(BaseParser):
               ('shape_id', 'shape_id')]
 
     def __init__(self):
-        BaseParser.__init__(self, "trips.txt", optional=False, fields=fields)
+        BaseParser.__init__(self, 'trips.txt', fields=TripsParser.fields)
 
     @staticmethod
     def parse(line):
@@ -242,7 +255,8 @@ class ShapesParser(BaseParser):
     fields = [('dist_traveled', 'shape_dist_traveled')]
 
     def __init__(self):
-        BaseParser.__init__(self, "shapes.txt", optional=True, fields=fields)
+        BaseParser.__init__(self, 'shapes.txt', optional=True,
+                            fields=ShapesParser.fields)
 
     @staticmethod
     def parse(line):
@@ -266,7 +280,7 @@ class AgencyParser(BaseParser):
               ('fare_url', 'agency_fare_url')]
 
     def __init__(self):
-        BaseParser.__init__(self, "agency.txt", optional=False, fields=fields)
+        BaseParser.__init__(self, 'agency.txt', fields=AgencyParser.fields)
 
     @staticmethod
     def parse(line):

@@ -1,31 +1,29 @@
-from csv import DictReader
 from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
 from datetime import datetime
 from service.parsers import *
-import os
 
 
-IMPORT_GTFS_HELP = "Import all the gtfs data from the specified directories"
+IMPORT_GTFS_HELP = 'Import all the gtfs data from the specified directories'
 
-FINISHED = "Loading finished at %s\n"
+FINISHED = 'Loading finished at %s\n'
 
-LOADED_DIRECTORY = "Loaded directory %s at %s\n"
+LOADED_DIRECTORY = 'Loaded directory %s at %s\n'
 
-LOADING_DIRECTORY = "Loading directory %s\n"
+LOADING_DIRECTORY = 'Loading directory %s\n'
 
-STARTING_LOADER = "Starting loader at %s\n"
+STARTING_LOADER = 'Starting loader at %s\n'
 
-LOADED_FROM = "%s loaded from %s\n"
+LOADED_FROM = '%s loaded from %s\n'
 
-STILL_IN_PROGRESS = "\tLoading %s lines from %s, still in progress...\n"
+STILL_IN_PROGRESS = '\tLoading %s lines from %s, still in progress...\n'
 
-WARNING_PROPERLY_NOT_LOADED = "Warning file %s not found or properly " \
-                              "not loaded.\n"
+WARNING_PROPERLY_NOT_LOADED = 'Warning file %s not found or properly ' \
+                              'not loaded.\n'
 
-ERROR_FILE_IS_REQUIRED = "Could not load %s data properly, failed at line " \
-                         "%s. Fix the following problems, this file is " \
-                         "required: "
+ERROR_FILE_IS_REQUIRED = 'Could not load %s data properly, failed at line ' \
+                         '%s. Fix the following problems, this file is ' \
+                         'required: '
 
 
 class Command(BaseCommand):
@@ -68,8 +66,11 @@ class Command(BaseCommand):
                 entity.__dict__[key] = field_data
         entity.save()
 
-    def _process_file(self, filename, parser, reader):
+    def _process_file(self, root_dir, parser):
         count = 0
+        filename = parser.filename
+        reader = GtfsReader(root_dir, filename)
+
         for line in reader:
             self._create_entity(line, parser)
 
@@ -86,8 +87,7 @@ class Command(BaseCommand):
         count = 0
 
         try:
-            reader = DictReader(open(os.path.join(root_dir, filename), 'rb'))
-            count = self._process_file(filename, parser, reader)
+            count = self._process_file(root_dir, parser)
         except ParserException, parser_error:
             raise CommandError(parser_error.message)
         except Exception, e:
@@ -96,5 +96,3 @@ class Command(BaseCommand):
                                    % (filename, count) + str(e))
             else:
                 self.stdout.write(WARNING_PROPERLY_NOT_LOADED % filename)
-
-
