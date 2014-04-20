@@ -72,6 +72,15 @@ class Agency(models.Model):
     # description of how to create fully qualified URL values.
     fare_url = models.URLField(null=True, blank=True)
 
+    def __eq__(self, other):
+        return other.name == self.name \
+            and other.agency_id == self.agency_id \
+            and other.url == self.url \
+            and other.timezone == self.timezone \
+            and other.lang == self.lang \
+            and other.phone == self.phone \
+            and other.fare_url == self.fare_url
+
 
 class Zone(models.Model):
     # zone_id Optional:
@@ -186,6 +195,17 @@ class Stop(models.Model):
 
     geopoint = models.PointField(null=True, blank=True)
     objects = models.GeoManager()
+
+    def __eq__(self, other):
+        return other.stop_id == self.stop_id \
+            and other.code == self.code \
+            and other.name == self.name \
+            and other.url == self.url \
+            and other.desc == self.desc \
+            and other.zone == self.zone \
+            and other.location_type == self.location_type \
+            and other.parent_station == self.parent_station \
+            and other.geopoint == self.geopoint
 
 
 class RouteType(models.Model):
@@ -304,6 +324,17 @@ class Route(models.Model):
     # screen.
     text_color = models.CharField(max_length=6, default="000000")
 
+    def __eq__(self, other):
+        return other.route_id == self.route_id \
+            and other.agency == self.agency \
+            and other.short_name == self.short_name \
+            and other.long_name == self.long_name \
+            and other.desc == self.desc \
+            and other.route_type == self.route_type \
+            and other.url == self.url \
+            and other.color == self.color \
+            and other.text_color == self.text_color
+
 
 class Service(models.Model):
     # service_id Required:
@@ -407,6 +438,12 @@ class Shape(models.Model):
     # A_shp,37.65863,-122.30839,11
     geopoint = models.PointField()
     objects = models.GeoManager()
+
+    def __eq__(self, other):
+        return other.shape_id == self.shape_id \
+            and other.geopoint == self.geopoint \
+            and other.pt_sequence == self.pt_sequence \
+            and other.dist_traveled == self.dist_traveled
 
 
 class Trip(models.Model):
@@ -653,6 +690,17 @@ class StopTime(models.Model):
     # that are used for this field in the shapes.txt file.
     shape_dist_traveled = models.FloatField(null=True, blank=True)
 
+    def __eq__(self, other):
+        return other.trip == self.trip \
+            and other.arrival_time == self.arrival_time \
+            and other.departure_time == self.departure_time \
+            and other.stop == self.stop \
+            and other.stop_sequence == self.stop_sequence \
+            and other.headsign == self.headsign \
+            and other.drop_off_type == self.drop_off_type \
+            and other.pickup_type == self.pickup_type \
+            and other.shape_dist_traveled == self.shape_dist_traveled
+
 
 class Calendar(models.Model):
     # service_id Required:
@@ -693,6 +741,18 @@ class Calendar(models.Model):
     # included in the service interval. The end_date field's value should be in
     # YYYYMMDD format.
     end_date = models.DateField()
+
+    def __eq__(self, other):
+        return other.service == self.service \
+            and other.monday == self.monday \
+            and other.tuesday == self.tuesday \
+            and other.wednesday == self.wednesday \
+            and other.thursday == self.thursday \
+            and other.friday == self.friday \
+            and other.saturday == self.saturday \
+            and other.sunday == self.sunday \
+            and other.start_date == self.start_date \
+            and other.end_date == self.end_date
 
 
 class ExceptionType(models.Model):
@@ -737,6 +797,11 @@ class CalendarDate(models.Model):
     # the holiday to the holiday service_id and to remove the holiday from
     # the regular service_id schedule.
     exception_type = models.ForeignKey(ExceptionType)
+
+    def __eq__(self, other):
+        return other.service == self.service \
+            and other.date == self.date \
+            and other.exception_type == self.exception_type
 
 
 class Fare(models.Model):

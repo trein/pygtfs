@@ -33,10 +33,9 @@ class GtfsReader(object):
 
 
 class BaseParser(object):
-    def __init__(self, filename, optional=False, fields=()):
+    def __init__(self, filename, optional=False):
         self.filename = filename
         self.optional = optional
-        self.fields = fields
 
     @staticmethod
     def parse(line):
@@ -47,25 +46,26 @@ class BaseParser(object):
         return fromstr('POINT(%s %s)' % (float(lat), float(lng)))
 
 
-class CalendarDatesParser(BaseParser):
+class AgencyParser(BaseParser):
     def __init__(self):
-        BaseParser.__init__(self, 'calendar_dates.txt', optional=True)
+        BaseParser.__init__(self, 'agency.txt')
 
     @staticmethod
     def parse(line):
-        pdate = check_field(line, 'date')
-        calendar_date = date(int(pdate[0:4]), int(pdate[4:6]), int(pdate[6:8]))
+        name = check_field(line, 'agency_name')
+        url = check_field(line, 'agency_url')
+        a_timezone = check_field(line, 'agency_timezone')
 
-        service_id = check_field(line, 'service_id')
-        service = Service.objects.get(service_id=service_id)
+        (entity, created) = Agency.objects.get_or_create(
+            name=name, url=url, timezone=a_timezone)
 
-        type_id = check_field(line, 'exception_type')
-        exception_type = ExceptionType.objects.get(value=type_id)
+        # Optional parameters
+        entity.agency_id = check_field(line, 'agency_id', optional=True)
+        entity.lang = check_field(line, 'agency_lang', optional=True)
+        entity.phone = check_field(line, 'agency_phone', optional=True)
+        entity.fare_url = check_field(line, 'agency_fare_url', optional=True)
 
-        return CalendarDate.objects.get_or_create(
-            service=service,
-            date=calendar_date,
-            exception_type=exception_type)
+        return entity, created
 
 
 class CalendarParser(BaseParser):
@@ -80,8 +80,11 @@ class CalendarParser(BaseParser):
         temp = check_field(line, 'end_date')
         end_date = date(int(temp[0:4]), int(temp[4:6]), int(temp[6:8]))
 
-        service_id = check_field(line, 'service_id')
-        service = Service.objects.get(service_id=service_id)
+        try:
+            service_id = check_field(line, 'service_id')
+            service = Service.objects.get(service_id=service_id)
+        except Service.DoesNotExist, e:
+            raise ParserException(e.message)
 
         return Calendar.objects.get_or_create(
             service=service,
@@ -96,6 +99,100 @@ class CalendarParser(BaseParser):
             end_date=end_date)
 
 
+class CalendarDatesParser(BaseParser):
+    def __init__(self):
+        BaseParser.__init__(self, 'calendar_dates.txt', optional=True)
+
+    @staticmethod
+    def parse(line):
+        pdate = check_field(line, 'date')
+        calendar_date = date(int(pdate[0:4]), int(pdate[4:6]), int(pdate[6:8]))
+
+        try:
+            service_id = check_field(line, 'service_id')
+            service = Service.objects.get(service_id=service_id)
+        except Service.DoesNotExist, e:
+            raise ParserException(e.message)
+
+        try:
+            type_id = check_field(line, 'exception_type')
+            exception_type = ExceptionType.objects.get(value=type_id)
+        except ExceptionType.DoesNotExist, e:
+            raise ParserException(e.message)
+
+        return CalendarDate.objects.get_or_create(
+            service=service,
+            date=calendar_date,
+            exception_type=exception_type)
+
+
+class RoutesParser(BaseParser):
+    def __init__(self):
+        BaseParser.__init__(self, 'routes.txt')
+
+    @staticmethod
+    def parse(line):
+        try:
+            route_type_id = check_field(line, 'route_type')
+            route_type = RouteType.objects.get(value=route_type_id)
+        except RouteType.DoesNotExist, e:
+            raise ParserException(e.message)
+
+        (route, created) = Route.objects.get_or_create(
+            route_id=check_field(line, 'route_id'),
+            short_name=check_field(line, 'route_short_name'),
+            long_name=check_field(line, 'route_long_name'),
+            route_type=route_type)
+
+        # link related agency
+        if check_field(line, 'agency_id', optional=True):
+            try:
+                agency_id = check_field(line, 'agency_id', optional=True)
+                route.agency = Agency.objects.get(agency_id=agency_id)
+            except Agency.DoesNotExist, e:
+                # raise ParserException(e.message)
+                pass
+                # raise ParserException('No agency with id %s '
+                #                       % check_field(line, 'agency_id'))
+                # self.stderr.write(
+                #     'No agency with id %s ' % check_field(line,
+                #                                           'agency_id'))
+
+        # Optional parameters
+        route.desc = check_field(line, 'route_desc', optional=True)
+        route.url = check_field(line, 'route_url', optional=True)
+        route.color = check_field(line, 'route_color', optional=True)
+        route.text_color = check_field(line, 'route_text_color', optional=True)
+
+        return route, created
+
+
+class ShapesParser(BaseParser):
+    def __init__(self):
+        BaseParser.__init__(self, 'shapes.txt', optional=True)
+
+    @staticmethod
+    def parse(line):
+        geopoint = BaseParser.create_geopoint(
+            check_field(line, 'shape_pt_lat'),
+            check_field(line, 'shape_pt_lon'))
+
+        shape_id = check_field(line, 'shape_id')
+        pt_sequence = check_field(line, 'shape_pt_sequence')
+
+        shape, created = Shape.objects.get_or_create(
+            shape_id=shape_id,
+            geopoint=geopoint,
+            pt_sequence=pt_sequence
+        )
+
+        # Optional parameters
+        shape.dist_traveled = check_field(
+            line, 'shape_dist_traveled', optional=True)
+
+        return shape, created
+
+
 class StopTimesParser(BaseParser):
     def __init__(self):
         BaseParser.__init__(self, 'stop_times.txt')
@@ -108,18 +205,30 @@ class StopTimesParser(BaseParser):
             (hour, minute, sec) = 0, 0, 0
         else:
             field = check_field(line, 'arrival_time')
-            (hour, minute, sec) = map(int, field.split(':'))
+            try:
+                (hour, minute, sec) = map(int, field.split(':'))
+            except ValueError, e:
+                raise ParserException(e.message)
         arrival_time = time(hour % 24, minute % 60, sec % 60)
 
         if check_field(line, 'departure_time', optional=True) is None:
             (hour, minute, sec) = 0, 0, 0
         else:
             field = check_field(line, 'departure_time')
-            (hour, minute, sec) = map(int, field.split(':'))
+            try:
+                (hour, minute, sec) = map(int, field.split(':'))
+            except ValueError, e:
+                raise ParserException(e.message)
         departure_time = time(hour % 24, minute % 60, sec % 60)
 
-        trip = Trip.objects.get(trip_id=check_field(line, 'trip_id'))
-        stop = Stop.objects.get(stop_id=check_field(line, 'stop_id'))
+        try:
+            trip = Trip.objects.get(trip_id=check_field(line, 'trip_id'))
+            stop = Stop.objects.get(stop_id=check_field(line, 'stop_id'))
+        except Trip.DoesNotExist, e:
+            raise ParserException(e.message)
+        except Stop.DoesNotExist, e:
+            raise ParserException(e.message)
+
         stop_sequence = check_field(line, 'stop_sequence')
 
         (stop, created) = StopTime.objects.get_or_create(
@@ -127,29 +236,32 @@ class StopTimesParser(BaseParser):
             stop=stop,
             arrival_time=arrival_time,
             departure_time=departure_time,
-            stop_sequence=stop_sequence)
+            stop_sequence=stop_sequence
+        )
 
         # create pickup_type
         if check_field(line, 'pickup_type', optional=True):
-            pickup_type = check_field(line, 'pickup_type')
-            stop.pickup_type = PickupType.objects.get(value=pickup_type)
+            try:
+                pickup_type = check_field(line, 'pickup_type')
+                stop.pickup_type = PickupType.objects.get(value=pickup_type)
+            except PickupType.DoesNotExist, e:
+                raise ParserException(e.message)
 
         # check drop off type :
         if check_field(line, 'drop_off_type', optional=True):
-            drop_off_type = check_field(line, 'drop_off_type')
-            stop.drop_off_type = DropOffType.objects.get(value=drop_off_type)
+            try:
+                drop_off_type = check_field(line, 'drop_off_type')
+                stop.drop_off_type = DropOffType.objects.get(value=drop_off_type)
+            except DropOffType.DoesNotExist, e:
+                # raise ParserException(e.message)
+                pass
 
         return stop, created
 
 
 class StopsParser(BaseParser):
-    fields = [('desc', 'stop_desc'),
-              ('code', 'stop_code'),
-              ('url', 'stop_url'),
-              ('location_type', 'location_type')]
-
     def __init__(self):
-        BaseParser.__init__(self, 'stops.txt', fields=StopsParser.fields)
+        BaseParser.__init__(self, 'stops.txt')
 
     @staticmethod
     def parse(line):
@@ -175,54 +287,22 @@ class StopsParser(BaseParser):
             try:
                 parent_id = check_field(line, 'parent_station', optional=True)
                 stop.parent_station = Stop.objects.get(stop_id=parent_id)
-            except Exception, e:
+            except Stop.DoesNotExist, e:
+                # raise ParserException(e.message)
                 pass
+
+        # Optional parameters
+        stop.desc = check_field(line, 'stop_desc', optional=True)
+        stop.url = check_field(line, 'stop_url', optional=True)
+        stop.code = check_field(line, 'stop_code', optional=True)
+        stop.location_type = check_field(line, 'location_type', optional=True)
+
         return stop, created
 
 
-class RoutesParser(BaseParser):
-    fields = [('desc', 'route_desc'),
-              ('url', 'route_url'),
-              ('color', 'route_color'),
-              ('text_color', 'route_text_color')]
-
-    def __init__(self):
-        BaseParser.__init__(self, 'routes.txt', fields=RoutesParser.fields)
-
-    @staticmethod
-    def parse(line):
-        route_id = check_field(line, 'route_id')
-        short_name = check_field(line, 'route_short_name')
-        long_name = check_field(line, 'route_long_name')
-        route_type_id = check_field(line, 'route_type')
-        route_type = RouteType.objects.get(value=route_type_id)
-
-        (route, created) = Route.objects.get_or_create(
-            route_id=route_id,
-            short_name=short_name,
-            long_name=long_name,
-            route_type=route_type)
-
-        # link related agency
-        if check_field(line, 'agency_id', optional=True):
-            try:
-                agency_id = check_field(line, 'agency_id')
-                route.agency = Agency.objects.get(agency_id=agency_id)
-            except Exception, e:
-                # raise ParserException('No agency with id %s '
-                #                       % check_field(line, 'agency_id'))
-                self.stderr.write(
-                    'No agency with id %s ' % check_field(line,
-                                                          'agency_id'))
-        return route, created
-
-
 class TripsParser(BaseParser):
-    fields = [('headsign', 'trip_headsign'),
-              ('shape_id', 'shape_id')]
-
     def __init__(self):
-        BaseParser.__init__(self, 'trips.txt', fields=TripsParser.fields)
+        BaseParser.__init__(self, 'trips.txt')
 
     @staticmethod
     def parse(line):
@@ -241,52 +321,15 @@ class TripsParser(BaseParser):
 
         # link related direction_id
         if check_field(line, 'direction_id', optional=True):
-            direction_id = check_field(line, 'direction_id')
+            direction_id = (int) check_field(line, 'direction_id')
             trip.direction = Direction.objects.get(value=direction_id)
 
         if check_field(line, 'block_id', optional=True):
             block_id = check_field(line, 'block_id')
             trip.block = Block.objects.get_or_create(block_id=block_id)[0]
 
+        # Optional parameters
+        trip.headsign = check_field(line, 'trip_headsign', optional=True)
+        trip.shape_id = check_field(line, 'shape_id', optional=True)
+
         return trip, created
-
-
-class ShapesParser(BaseParser):
-    fields = [('dist_traveled', 'shape_dist_traveled')]
-
-    def __init__(self):
-        BaseParser.__init__(self, 'shapes.txt', optional=True,
-                            fields=ShapesParser.fields)
-
-    @staticmethod
-    def parse(line):
-        geopoint = BaseParser.create_geopoint(
-            check_field(line, 'shape_pt_lat'),
-            check_field(line, 'shape_pt_lon'))
-
-        shape_id = check_field(line, 'shape_id')
-        pt_sequence = check_field(line, 'shape_pt_sequence')
-
-        return Shape.objects.get_or_create(
-            shape_id=shape_id,
-            geopoint=geopoint,
-            pt_sequence=pt_sequence)
-
-
-class AgencyParser(BaseParser):
-    fields = [('agency_id', 'agency_id'),
-              ('lang', 'agency_lang'),
-              ('phone', 'agency_phone'),
-              ('fare_url', 'agency_fare_url')]
-
-    def __init__(self):
-        BaseParser.__init__(self, 'agency.txt', fields=AgencyParser.fields)
-
-    @staticmethod
-    def parse(line):
-        name = check_field(line, 'agency_name')
-        url = check_field(line, 'agency_url')
-        timezone = check_field(line, 'agency_timezone')
-
-        return Agency.objects.get_or_create(
-            name=name, url=url, timezone=timezone)

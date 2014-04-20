@@ -31,14 +31,12 @@ class Command(BaseCommand):
     help = IMPORT_GTFS_HELP
 
     def handle(self, *args, **options):
-        self.stdout.write(STARTING_LOADER % str(datetime.now()))
+        self._log(STARTING_LOADER % str(datetime.now()))
         for root_dir in args:
-            self.stdout.write(LOADING_DIRECTORY % root_dir)
+            self._log(LOADING_DIRECTORY % root_dir)
             self._parse_data(root_dir)
-            self.stdout.write(LOADED_DIRECTORY
-                              % (root_dir, str(datetime.now())))
-
-        self.stdout.write(FINISHED % (str(datetime.now())))
+            self._log(LOADED_DIRECTORY % (root_dir, str(datetime.now())))
+        self._log(FINISHED % (str(datetime.now())))
 
     def _parse_data(self, root_dir):
         parsers = [
@@ -77,8 +75,7 @@ class Command(BaseCommand):
             # Provide feedback for long files
             count += 1
             if count % 10000 == 0:
-                self.stdout.write(STILL_IN_PROGRESS % (count, filename))
-        self.stdout.write(LOADED_FROM % (count, filename))
+                self._log(STILL_IN_PROGRESS % (count, filename))
         return count
 
     def _load(self, root_dir, parser):
@@ -88,6 +85,7 @@ class Command(BaseCommand):
 
         try:
             count = self._process_file(root_dir, parser)
+            self._log(LOADED_FROM % (count, filename))
         except ParserException, parser_error:
             raise CommandError(parser_error.message)
         except Exception, e:
@@ -95,4 +93,7 @@ class Command(BaseCommand):
                 raise CommandError(ERROR_FILE_IS_REQUIRED
                                    % (filename, count) + str(e))
             else:
-                self.stdout.write(WARNING_PROPERLY_NOT_LOADED % filename)
+                self._log(WARNING_PROPERLY_NOT_LOADED % filename)
+
+    def _log(self, message):
+        self.stdout.write(message)
