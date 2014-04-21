@@ -1,6 +1,30 @@
 [
     {
         "pk": 1,
+        "model": "service.wheelchairaccessible",
+        "fields": {
+            "name": "No accessibility information",
+            "value": 0,
+        }
+    },
+    {
+        "pk": 2,
+        "model": "service.wheelchairaccessible",
+        "fields": {
+            "name": "At least one rider in a wheelchair",
+            "value": 1,
+        }
+    },
+    {
+        "pk": 3,
+        "model": "service.wheelchairaccessible",
+        "fields": {
+            "name": "No riders in wheelchairs",
+            "value": 2,
+        }
+    },
+    {
+        "pk": 1,
         "model": "service.routetype",
         "fields": {
             "name": "Tram, Streetcar, Light rail",
