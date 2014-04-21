@@ -690,6 +690,7 @@ class StopsParserTest(TestCase):
         self.subject = StopsParser()
 
     def fixture(self):
+        WheelchairAccessible(value=1, name='PARTICULAR').save()
         Zone(zone_id='ZONE').save()
 
     def test_stops_can_be_parsed(self):
@@ -704,6 +705,7 @@ class StopsParserTest(TestCase):
             'zone_id': 'ZONE',
             'location_type': '1',
             'parent_station': '',
+            'wheelchair_boarding': '1',
         }
         (entity, created) = self.subject.parse(line)
 
@@ -716,6 +718,7 @@ class StopsParserTest(TestCase):
             zone=Zone.objects.get(zone_id='ZONE'),
             location_type='1',
             parent_station=None,
+            wheelchair=WheelchairAccessible.objects.get(value=1),
             geopoint=BaseParser.create_geopoint('36.425288', '-117.133162'),
         )
         self.assertEqual(entity, expected_entity)
@@ -727,6 +730,7 @@ class TripsParserTest(TestCase):
         self.subject = TripsParser()
 
     def fixture(self):
+        WheelchairAccessible(value=1, name='PARTICULAR').save()
         RouteType(name='one', description='desc', value=3).save()
         Agency(
             url='http://google.com',
@@ -755,6 +759,8 @@ class TripsParserTest(TestCase):
             'direction_id': '0',
             'shape_id': '',
             'trip_headsign': 'to Bullfrog',
+            'wheelchair_accessible': '1',
+            'short_name': 'AB_TEST',
         }
         (entity, created) = self.subject.parse(line)
 
@@ -762,9 +768,11 @@ class TripsParserTest(TestCase):
             trip_id='AB1',
             route=Route.objects.get(route_id='AB'),
             service=Service.objects.get(service_id='FULLW'),
-            direction='',
-            block='',
-            shape='',
-            headsign='to Bullfrog'
+            direction=Direction.objects.get(value=0),
+            block=Block.objects.get(block_id='1'),
+            shape=None,
+            headsign='to Bullfrog',
+            wheelchair=WheelchairAccessible.objects.get(value=1),
+            short_name='AB_TEST',
         )
         self.assertEqual(entity, expected_entity)

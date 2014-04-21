@@ -283,9 +283,7 @@ class StopsParser(BaseParser):
         # create zone
         if check_field(line, 'zone_id', optional=True):
             zone_id = check_field(line, 'zone_id')
-            (zone, created) = Zone.objects.get_or_create(zone_id=zone_id)
-
-            stop.zone = zone
+            (stop.zone, created) = Zone.objects.get_or_create(zone_id=zone_id)
 
         # check parent station
         if check_field(line, 'parent_station', optional=True):
@@ -297,6 +295,10 @@ class StopsParser(BaseParser):
                 pass
 
         # Optional parameters
+        if check_field(line, 'wheelchair_boarding', optional=True):
+            wheelchair = check_field(line, 'wheelchair_boarding')
+            stop.wheelchair = WheelchairAccessible.objects.get(value=wheelchair)
+
         stop.desc = check_field(line, 'stop_desc', optional=True)
         stop.url = check_field(line, 'stop_url', optional=True)
         stop.code = check_field(line, 'stop_code', optional=True)
@@ -324,18 +326,24 @@ class TripsParser(BaseParser):
             service=service,
             trip_id=trip_id)
 
-        # link related direction_id
+        # Optional parameters
         if check_field(line, 'direction_id', optional=True):
             direction_id = check_field(line, 'direction_id')
-            print 'Directions: ', Direction.objects.get(value=direction_id)
             trip.direction = Direction.objects.get(value=direction_id)
 
         if check_field(line, 'block_id', optional=True):
             block_id = check_field(line, 'block_id')
-            trip.block = Block.objects.get_or_create(block_id=block_id)[0]
+            (trip.block, c) = Block.objects.get_or_create(block_id=block_id)
 
-        # Optional parameters
+        if check_field(line, 'shape_id', optional=True):
+            shape_id = check_field(line, 'shape_id')
+            trip.shape = Shape.objects.get(shape_id=shape_id)
+
+        if check_field(line, 'wheelchair_accessible', optional=True):
+            wheelchair = check_field(line, 'wheelchair_accessible')
+            trip.wheelchair = WheelchairAccessible.objects.get(value=wheelchair)
+
         trip.headsign = check_field(line, 'trip_headsign', optional=True)
-        trip.shape_id = check_field(line, 'shape_id', optional=True)
+        trip.short_name = check_field(line, 'short_name', optional=True)
 
         return trip, created

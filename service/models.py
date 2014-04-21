@@ -9,6 +9,21 @@ has a `trips` attribute, with a list of trips for the specific route.
 from django.contrib.gis.db import models
 
 
+class WheelchairAccessible(models.Model):
+    """Referential data"""
+
+    # wheelchair_accessible Optional:
+    #
+    # 0 (or empty) - indicates that there is no accessibility information
+    # for the trip
+    # 1 - indicates that the vehicle being used on this particular trip can
+    # accommodate at least one rider in a wheelchair
+    # 2 - indicates that no riders in wheelchairs can be accommodated on
+    # this trip
+    value = models.IntegerField()
+    name = models.CharField(max_length=255)
+
+
 class Agency(models.Model):
     # agency_id Optional:
     # The agency_id field is an ID that uniquely identifies a transit agency. A
@@ -45,7 +60,7 @@ class Agency(models.Model):
     # The agency_lang field contains a two-letter ISO 639-1 code for the
     # primary language used by this transit agency. The language code is
     # case-insensitive (both en and EN are accepted). This setting defines
-    # capitalization rules and other language-specific settings for all text
+    # capitalization rules  other language-specific settings for all text
     # contained in this transit agency's feed.
     #
     # Please refer to http://www.loc.gov/standards/iso639-2/php/code_list.php
@@ -73,13 +88,13 @@ class Agency(models.Model):
     fare_url = models.URLField(null=True, blank=True)
 
     def __eq__(self, other):
-        return other.name == self.name \
-            and other.agency_id == self.agency_id \
-            and other.url == self.url \
-            and other.timezone == self.timezone \
-            and other.lang == self.lang \
-            and other.phone == self.phone \
-            and other.fare_url == self.fare_url
+        return other.name == self.name and \
+               other.agency_id == self.agency_id and \
+               other.url == self.url and \
+               other.timezone == self.timezone and \
+               other.lang == self.lang and \
+               other.phone == self.phone and \
+               other.fare_url == self.fare_url
 
 
 class Zone(models.Model):
@@ -191,21 +206,22 @@ class Stop(models.Model):
     # specific stop / platform
     # 2 - there exists no accessible path from outside the station to the
     # specific stop / platform
-    # wheelchair = models.CharField(max_length=255, null=True, blank=True)
+    wheelchair = models.ForeignKey(WheelchairAccessible, null=True, blank=True)
 
     geopoint = models.PointField(null=True, blank=True)
     objects = models.GeoManager()
 
     def __eq__(self, other):
-        return other.stop_id == self.stop_id \
-            and other.code == self.code \
-            and other.name == self.name \
-            and other.url == self.url \
-            and other.desc == self.desc \
-            and other.zone == self.zone \
-            and other.location_type == self.location_type \
-            and other.parent_station == self.parent_station \
-            and other.geopoint == self.geopoint
+        return other.stop_id == self.stop_id and \
+               other.code == self.code and \
+               other.name == self.name and \
+               other.url == self.url and \
+               other.desc == self.desc and \
+               other.zone == self.zone and \
+               other.location_type == self.location_type and \
+               other.parent_station == self.parent_station and \
+               other.wheelchair == self.wheelchair and \
+               other.geopoint == self.geopoint
 
 
 class RouteType(models.Model):
@@ -325,15 +341,15 @@ class Route(models.Model):
     text_color = models.CharField(max_length=6, default="000000")
 
     def __eq__(self, other):
-        return other.route_id == self.route_id \
-            and other.agency == self.agency \
-            and other.short_name == self.short_name \
-            and other.long_name == self.long_name \
-            and other.desc == self.desc \
-            and other.route_type == self.route_type \
-            and other.url == self.url \
-            and other.color == self.color \
-            and other.text_color == self.text_color
+        return other.route_id == self.route_id and \
+               other.agency == self.agency and \
+               other.short_name == self.short_name and \
+               other.long_name == self.long_name and \
+               other.desc == self.desc and \
+               other.route_type == self.route_type and \
+               other.url == self.url and \
+               other.color == self.color and \
+               other.text_color == self.text_color
 
 
 class Service(models.Model):
@@ -376,8 +392,8 @@ class Block(models.Model):
     # The block_id field identifies the block to which the trip belongs. A block
     # consists of two or more sequential trips made using the same vehicle,
     # where a passenger can transfer from one trip to the next just by
-    # staying in the vehicle. The block_id must be  referenced by two or more
-    #  trips in trips.txt.
+    # staying in the vehicle. The block_id must be referenced by two or more
+    # trips in trips.txt.
     block_id = models.CharField(max_length=255, unique=True)
 
 
@@ -440,10 +456,10 @@ class Shape(models.Model):
     objects = models.GeoManager()
 
     def __eq__(self, other):
-        return other.shape_id == self.shape_id \
-            and other.geopoint == self.geopoint \
-            and other.pt_sequence == self.pt_sequence \
-            and other.dist_traveled == self.dist_traveled
+        return other.shape_id == self.shape_id and \
+               other.geopoint == self.geopoint and \
+               other.pt_sequence == self.pt_sequence and \
+               other.dist_traveled == self.dist_traveled
 
 
 class Trip(models.Model):
@@ -508,7 +524,7 @@ class Trip(models.Model):
     # The shape_id field contains an ID that defines a shape for the trip. This
     # value is referenced from the shapes.txt file. The shapes.txt file allows
     # you to define how a line should be drawn on the map to represent a trip.
-    shape_id = models.CharField(max_length=255, null=True, blank=True)
+    shape = models.ForeignKey(Shape, null=True, blank=True)
 
     # wheelchair_accessible Optional:
     #
@@ -518,7 +534,7 @@ class Trip(models.Model):
     # accommodate at least one rider in a wheelchair
     # 2 - indicates that no riders in wheelchairs can be accommodated on
     # this trip
-    # wheelchair = models.CharField(max_length=255, null=True, blank=True)
+    wheelchair = models.ForeignKey(WheelchairAccessible, null=True, blank=True)
 
     # trip_short_name Optional:
     # The trip_short_name field contains the text that appears in
@@ -528,7 +544,18 @@ class Trip(models.Model):
     # trip_short_name value, if provided, should uniquely identify a trip
     # within a service day; it should not be used for destination names or
     # limited/express  designations.
-    # short_name = models.CharField(max_length=255, null=True, blank=True)
+    short_name = models.CharField(max_length=255, null=True, blank=True)
+
+    def __eq__(self, other):
+        return other.trip_id == self.trip_id and \
+               other.route == self.route and \
+               other.headsign == self.headsign and \
+               other.service == self.service and \
+               other.direction == self.direction and \
+               other.block == self.block and \
+               other.shape == self.shape and \
+               other.wheelchair == self.wheelchair and \
+               other.short_name == self.short_name
 
 
 class PickupType(models.Model):
@@ -691,15 +718,15 @@ class StopTime(models.Model):
     shape_dist_traveled = models.FloatField(null=True, blank=True)
 
     def __eq__(self, other):
-        return other.trip == self.trip \
-            and other.arrival_time == self.arrival_time \
-            and other.departure_time == self.departure_time \
-            and other.stop == self.stop \
-            and other.stop_sequence == self.stop_sequence \
-            and other.headsign == self.headsign \
-            and other.drop_off_type == self.drop_off_type \
-            and other.pickup_type == self.pickup_type \
-            and other.shape_dist_traveled == self.shape_dist_traveled
+        return other.trip == self.trip and \
+               other.arrival_time == self.arrival_time and \
+               other.departure_time == self.departure_time and \
+               other.stop == self.stop and \
+               other.stop_sequence == self.stop_sequence and \
+               other.headsign == self.headsign and \
+               other.drop_off_type == self.drop_off_type and \
+               other.pickup_type == self.pickup_type and \
+               other.shape_dist_traveled == self.shape_dist_traveled
 
 
 class Calendar(models.Model):
@@ -743,16 +770,16 @@ class Calendar(models.Model):
     end_date = models.DateField()
 
     def __eq__(self, other):
-        return other.service == self.service \
-            and other.monday == self.monday \
-            and other.tuesday == self.tuesday \
-            and other.wednesday == self.wednesday \
-            and other.thursday == self.thursday \
-            and other.friday == self.friday \
-            and other.saturday == self.saturday \
-            and other.sunday == self.sunday \
-            and other.start_date == self.start_date \
-            and other.end_date == self.end_date
+        return other.service == self.service and \
+               other.monday == self.monday and \
+               other.tuesday == self.tuesday and \
+               other.wednesday == self.wednesday and \
+               other.thursday == self.thursday and \
+               other.friday == self.friday and \
+               other.saturday == self.saturday and \
+               other.sunday == self.sunday and \
+               other.start_date == self.start_date and \
+               other.end_date == self.end_date
 
 
 class ExceptionType(models.Model):
@@ -799,9 +826,9 @@ class CalendarDate(models.Model):
     exception_type = models.ForeignKey(ExceptionType)
 
     def __eq__(self, other):
-        return other.service == self.service \
-            and other.date == self.date \
-            and other.exception_type == self.exception_type
+        return other.service == self.service and \
+               other.date == self.date and \
+               other.exception_type == self.exception_type
 
 
 class Fare(models.Model):
