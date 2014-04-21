@@ -11,6 +11,10 @@ class ParserException(Exception):
     def for_message(message):
         return ParserException(message)
 
+    @staticmethod
+    def for_args(*args):
+        return ParserException(*args)
+
 
 def check_field(reader, field, optional=False):
     if field in reader and reader[field]:
@@ -84,7 +88,7 @@ class CalendarParser(BaseParser):
             service_id = check_field(line, 'service_id')
             service = Service.objects.get(service_id=service_id)
         except Service.DoesNotExist, e:
-            raise ParserException(e.message)
+            raise ParserException.for_args(e.args)
 
         return Calendar.objects.get_or_create(
             service=service,
@@ -112,13 +116,13 @@ class CalendarDatesParser(BaseParser):
             service_id = check_field(line, 'service_id')
             service = Service.objects.get(service_id=service_id)
         except Service.DoesNotExist, e:
-            raise ParserException(e.message)
+            raise ParserException.for_args(e.args)
 
         try:
             type_id = check_field(line, 'exception_type')
             exception_type = ExceptionType.objects.get(value=type_id)
         except ExceptionType.DoesNotExist, e:
-            raise ParserException(e.message)
+            raise ParserException.for_args(e.args)
 
         return CalendarDate.objects.get_or_create(
             service=service,
@@ -136,7 +140,7 @@ class RoutesParser(BaseParser):
             route_type_id = check_field(line, 'route_type')
             route_type = RouteType.objects.get(value=route_type_id)
         except RouteType.DoesNotExist, e:
-            raise ParserException(e.message)
+            raise ParserException.for_args(e.args)
 
         (route, created) = Route.objects.get_or_create(
             route_id=check_field(line, 'route_id'),
@@ -208,7 +212,7 @@ class StopTimesParser(BaseParser):
             try:
                 (hour, minute, sec) = map(int, field.split(':'))
             except ValueError, e:
-                raise ParserException(e.message)
+                raise ParserException.for_args(e.args)
         arrival_time = time(hour % 24, minute % 60, sec % 60)
 
         if check_field(line, 'departure_time', optional=True) is None:
@@ -218,16 +222,16 @@ class StopTimesParser(BaseParser):
             try:
                 (hour, minute, sec) = map(int, field.split(':'))
             except ValueError, e:
-                raise ParserException(e.message)
+                raise ParserException.for_args(e.args)
         departure_time = time(hour % 24, minute % 60, sec % 60)
 
         try:
             trip = Trip.objects.get(trip_id=check_field(line, 'trip_id'))
             stop = Stop.objects.get(stop_id=check_field(line, 'stop_id'))
         except Trip.DoesNotExist, e:
-            raise ParserException(e.message)
+            raise ParserException.for_args(e.args)
         except Stop.DoesNotExist, e:
-            raise ParserException(e.message)
+            raise ParserException.for_args(e.args)
 
         stop_sequence = check_field(line, 'stop_sequence')
 
@@ -245,7 +249,8 @@ class StopTimesParser(BaseParser):
                 pickup_type = check_field(line, 'pickup_type')
                 stop.pickup_type = PickupType.objects.get(value=pickup_type)
             except PickupType.DoesNotExist, e:
-                raise ParserException(e.message)
+                # raise ParserException.for_args(e.args)
+                pass
 
         # check drop off type :
         if check_field(line, 'drop_off_type', optional=True):
@@ -288,7 +293,7 @@ class StopsParser(BaseParser):
                 parent_id = check_field(line, 'parent_station', optional=True)
                 stop.parent_station = Stop.objects.get(stop_id=parent_id)
             except Stop.DoesNotExist, e:
-                # raise ParserException(e.message)
+                # raise ParserException.for_args(e.args)
                 pass
 
         # Optional parameters
@@ -321,7 +326,8 @@ class TripsParser(BaseParser):
 
         # link related direction_id
         if check_field(line, 'direction_id', optional=True):
-            direction_id = (int) check_field(line, 'direction_id')
+            direction_id = check_field(line, 'direction_id')
+            print 'Directions: ', Direction.objects.get(value=direction_id)
             trip.direction = Direction.objects.get(value=direction_id)
 
         if check_field(line, 'block_id', optional=True):
