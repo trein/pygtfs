@@ -4,7 +4,7 @@
         "model": "service.wheelchairaccessible",
         "fields": {
             "name": "No accessibility information",
-            "value": 0,
+            "value": 0
         }
     },
     {
@@ -12,7 +12,7 @@
         "model": "service.wheelchairaccessible",
         "fields": {
             "name": "At least one rider in a wheelchair",
-            "value": 1,
+            "value": 1
         }
     },
     {
@@ -20,7 +20,7 @@
         "model": "service.wheelchairaccessible",
         "fields": {
             "name": "No riders in wheelchairs",
-            "value": 2,
+            "value": 2
         }
     },
     {

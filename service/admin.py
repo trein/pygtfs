@@ -3,6 +3,7 @@ from django.contrib import admin
 from service.models import Agency
 from service.models import Zone
 from service.models import Stop
+from service.models import WheelchairAccessible
 from service.models import RouteType
 from service.models import Route
 from service.models import Service
@@ -28,6 +29,7 @@ admin.site.register(Shape, options.OSMGeoAdmin)
 admin.site.register(Agency)
 admin.site.register(Zone)
 admin.site.register(RouteType)
+admin.site.register(WheelchairAccessible)
 admin.site.register(Route)
 admin.site.register(Service)
 admin.site.register(Direction)
