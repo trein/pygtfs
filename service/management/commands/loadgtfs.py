@@ -54,14 +54,7 @@ class Command(BaseCommand):
             self._load(root_dir, each)
 
     def _create_entity(self, line, parser):
-        fields = parser.fields
         (entity, created) = parser.parse(line)
-
-        for key, value in fields:
-            field_data = check_field(line, value, optional=True)
-
-            if not entity.__dict__[key] and field_data:
-                entity.__dict__[key] = field_data
         entity.save()
 
     def _process_file(self, root_dir, parser):

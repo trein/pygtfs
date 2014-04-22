@@ -136,7 +136,7 @@ class Stop(models.Model):
     #
     # See http://www.w3.org/Addressing/URL/4_URI_Recommentations.html
     # for a description of how to create fully qualified URL values.
-    url = models.URLField()
+    url = models.URLField(null=True, blank=True)
 
     # stop_desc Optional:
     # The stop_desc field contains a description of a stop. Please provide

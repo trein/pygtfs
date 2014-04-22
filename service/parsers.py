@@ -335,9 +335,10 @@ class TripsParser(BaseParser):
             block_id = check_field(line, 'block_id')
             (trip.block, c) = Block.objects.get_or_create(block_id=block_id)
 
-        if check_field(line, 'shape_id', optional=True):
-            shape_id = check_field(line, 'shape_id')
-            trip.shape = Shape.objects.get(shape_id=shape_id)
+        # Code returning more than one result
+        # if check_field(line, 'shape_id', optional=True):
+        #     shape_id = check_field(line, 'shape_id')
+        #     trip.shape = Shape.objects.get(shape_id=shape_id)
 
         if check_field(line, 'wheelchair_accessible', optional=True):
             wheelchair = check_field(line, 'wheelchair_accessible')
