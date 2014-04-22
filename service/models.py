@@ -9,7 +9,12 @@ has a `trips` attribute, with a list of trips for the specific route.
 from django.contrib.gis.db import models
 
 
-class WheelchairAccessible(models.Model):
+class GtfsModel(models.Model):
+    def update_param(self, param, value):
+        setattr(self, param, value)
+
+
+class WheelchairAccessible(GtfsModel):
     """Referential data"""
 
     # wheelchair_accessible Optional:
@@ -24,7 +29,7 @@ class WheelchairAccessible(models.Model):
     name = models.CharField(max_length=255)
 
 
-class Agency(models.Model):
+class Agency(GtfsModel):
     # agency_id Optional:
     # The agency_id field is an ID that uniquely identifies a transit agency. A
     # transit feed may represent data from more than one agency. The agency_id
@@ -97,7 +102,7 @@ class Agency(models.Model):
                other.fare_url == self.fare_url
 
 
-class Zone(models.Model):
+class Zone(GtfsModel):
     # zone_id Optional:
     # The zone_id field defines the fare zone for a stop ID. Zone IDs are
     # required if you want to provide fare information using fare_rules.txt.
@@ -105,7 +110,7 @@ class Zone(models.Model):
     zone_id = models.CharField(max_length=255, unique=True)
 
 
-class Stop(models.Model):
+class Stop(GtfsModel):
     # stop_id Required:
     # The stop_id field contains an ID that uniquely identifies a stop or
     # station. Multiple routes may use the same stop. The stop_id is dataset
@@ -224,7 +229,7 @@ class Stop(models.Model):
                other.geopoint == self.geopoint
 
 
-class RouteType(models.Model):
+class RouteType(GtfsModel):
     # route_type Required:
     # The route_type field describes the type of transportation used on a
     # route. Valid values for this field are:
@@ -245,7 +250,7 @@ class RouteType(models.Model):
     value = models.IntegerField(unique=True)
 
 
-class Route(models.Model):
+class Route(GtfsModel):
     # route_id Required:
     # The route_id field contains an ID that uniquely identifies a route. The
     # route_id is dataset unique.
@@ -352,7 +357,7 @@ class Route(models.Model):
                other.text_color == self.text_color
 
 
-class Service(models.Model):
+class Service(GtfsModel):
     # service_id Required:
     # The service_id contains an ID that uniquely identifies a set of dates
     # when service is available for one or more routes. This value is
@@ -360,7 +365,7 @@ class Service(models.Model):
     service_id = models.CharField(max_length=255, unique=True)
 
 
-class Direction(models.Model):
+class Direction(GtfsModel):
     # direction_id Optional:
     # The direction_id field contains a binary value that indicates the
     # direction of travel for a trip. Use this field to distinguish between
@@ -387,7 +392,7 @@ class Direction(models.Model):
     value = models.IntegerField(unique=True)
 
 
-class Block(models.Model):
+class Block(GtfsModel):
     # block_id Optional:
     # The block_id field identifies the block to which the trip belongs. A block
     # consists of two or more sequential trips made using the same vehicle,
@@ -397,7 +402,7 @@ class Block(models.Model):
     block_id = models.CharField(max_length=255, unique=True)
 
 
-class Shape(models.Model):
+class Shape(GtfsModel):
     # shape_id Required:
     # The shape_id field contains an ID that uniquely identifies a shape.
     shape_id = models.CharField(max_length=255)
@@ -462,7 +467,7 @@ class Shape(models.Model):
                other.dist_traveled == self.dist_traveled
 
 
-class Trip(models.Model):
+class Trip(GtfsModel):
     # trip_id Required:
     # The trip_id field contains an ID that identifies a trip. The trip_id is
     # dataset unique.
@@ -524,7 +529,7 @@ class Trip(models.Model):
     # The shape_id field contains an ID that defines a shape for the trip. This
     # value is referenced from the shapes.txt file. The shapes.txt file allows
     # you to define how a line should be drawn on the map to represent a trip.
-    shape = models.ForeignKey(Shape, null=True, blank=True)
+    shapes = models.ManyToManyField(Shape, null=True, blank=True)
 
     # wheelchair_accessible Optional:
     #
@@ -547,30 +552,31 @@ class Trip(models.Model):
     short_name = models.CharField(max_length=255, null=True, blank=True)
 
     def __eq__(self, other):
+        # it does not compare shapes
+        # other.shapes == self.shapes and \
         return other.trip_id == self.trip_id and \
                other.route == self.route and \
                other.headsign == self.headsign and \
                other.service == self.service and \
                other.direction == self.direction and \
                other.block == self.block and \
-               other.shape == self.shape and \
                other.wheelchair == self.wheelchair and \
                other.short_name == self.short_name
 
 
-class PickupType(models.Model):
+class PickupType(GtfsModel):
     """Referential data"""
     name = models.CharField(max_length=255)
     value = models.IntegerField()
 
 
-class DropOffType(models.Model):
+class DropOffType(GtfsModel):
     """Referential data"""
     name = models.CharField(max_length=255)
     value = models.IntegerField()
 
 
-class StopTime(models.Model):
+class StopTime(GtfsModel):
     # trip_id Required:
     # The trip_id field contains an ID that identifies a trip. This value is
     # referenced from the trips.txt file.
@@ -729,7 +735,7 @@ class StopTime(models.Model):
                other.shape_dist_traveled == self.shape_dist_traveled
 
 
-class Calendar(models.Model):
+class Calendar(GtfsModel):
     # service_id Required:
     # The service_id contains an ID that uniquely identifies a set of dates
     # when service is available for one or more routes. Each service_id value
@@ -782,13 +788,13 @@ class Calendar(models.Model):
                other.end_date == self.end_date
 
 
-class ExceptionType(models.Model):
+class ExceptionType(GtfsModel):
     """Referential data"""
     name = models.CharField(max_length=255)
     value = models.IntegerField()
 
 
-class CalendarDate(models.Model):
+class CalendarDate(GtfsModel):
     # service_id Required:
     # The service_id contains an ID that uniquely identifies a set of dates
     # when a service exception is available for one or more routes. Each
@@ -831,16 +837,16 @@ class CalendarDate(models.Model):
                other.exception_type == self.exception_type
 
 
-class Fare(models.Model):
+class Fare(GtfsModel):
     fare_id = models.CharField(max_length=255, unique=True)
 
 
-class PaymentMethod(models.Model):
+class PaymentMethod(GtfsModel):
     name = models.CharField(max_length=50)
     vale = models.IntegerField()
 
 
-class FareAttribute(models.Model):
+class FareAttribute(GtfsModel):
     # fare_id Required:
     # The fare_id field contains an ID that uniquely identifies a fare class.
     # The fare_id is dataset unique.
@@ -885,7 +891,7 @@ class FareAttribute(models.Model):
     transfer_duration = models.IntegerField(null=True, blank=True)
 
 
-class FareRule(models.Model):
+class FareRule(GtfsModel):
     # fare_id Required:
     # The fare_id field contains an ID that uniquely identifies a fare class.
     # This value is referenced from the fare_attributes.txt file.
@@ -949,7 +955,7 @@ class FareRule(models.Model):
                                  related_name="contains")
 
 
-class Frequency(models.Model):
+class Frequency(GtfsModel):
     # trip_id Required:
     # The trip_id contains an ID that identifies a trip on which the specified
     # frequency of service applies. Trip IDs are referenced from the trips.txt
@@ -1012,7 +1018,7 @@ class Frequency(models.Model):
     exact_times = models.IntegerField(null=True, blank=True)
 
 
-class Transfer(models.Model):
+class Transfer(GtfsModel):
     # from_stop_id Required:
     # The from_stop_id field contains a stop ID that identifies a stop or
     # station where a connection between routes begins. Stop IDs are referenced

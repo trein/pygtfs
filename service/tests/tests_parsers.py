@@ -25,9 +25,9 @@ class AgencyTest(TestCase):
             'agency_phone': '555-555-5555',
             'agency_fare_url': 'http://google.com',
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = Agency(
+        expected = Agency(
             url='http://google.com',
             name='Demo Transit Authority',
             timezone='America/Los_Angeles',
@@ -36,7 +36,7 @@ class AgencyTest(TestCase):
             phone='555-555-5555',
             fare_url='http://google.com',
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_agencies_consider_optional_agency_id(self):
         line = {
@@ -47,9 +47,9 @@ class AgencyTest(TestCase):
             'agency_phone': '555-555-5555',
             'agency_fare_url': 'http://google.com',
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = Agency(
+        expected = Agency(
             url='http://google.com',
             name='Demo Transit Authority',
             timezone='America/Los_Angeles',
@@ -57,7 +57,7 @@ class AgencyTest(TestCase):
             phone='555-555-5555',
             fare_url='http://google.com',
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_agencies_consider_optional_lang(self):
         line = {
@@ -68,9 +68,9 @@ class AgencyTest(TestCase):
             'agency_phone': '555-555-5555',
             'agency_fare_url': 'http://google.com',
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = Agency(
+        expected = Agency(
             url='http://google.com',
             name='Demo Transit Authority',
             timezone='America/Los_Angeles',
@@ -78,7 +78,7 @@ class AgencyTest(TestCase):
             phone='555-555-5555',
             fare_url='http://google.com',
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_agencies_consider_optional_phone(self):
         line = {
@@ -89,9 +89,9 @@ class AgencyTest(TestCase):
             'agency_lang': 'en',
             'agency_fare_url': 'http://google.com',
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = Agency(
+        expected = Agency(
             url='http://google.com',
             name='Demo Transit Authority',
             timezone='America/Los_Angeles',
@@ -99,7 +99,7 @@ class AgencyTest(TestCase):
             lang='en',
             fare_url='http://google.com',
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_agencies_consider_optional_fare_url(self):
         line = {
@@ -110,9 +110,9 @@ class AgencyTest(TestCase):
             'agency_lang': 'en',
             'agency_phone': '555-555-5555',
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = Agency(
+        expected = Agency(
             url='http://google.com',
             name='Demo Transit Authority',
             timezone='America/Los_Angeles',
@@ -120,7 +120,7 @@ class AgencyTest(TestCase):
             lang='en',
             phone='555-555-5555',
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
 
 class CalendarTest(TestCase):
@@ -145,9 +145,9 @@ class CalendarTest(TestCase):
             'sunday': '1',
             'service_id': 'FULLW',
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = Calendar(
+        expected = Calendar(
             end_date=date(year=2010, month=12, day=31),
             start_date=date(year=2007, month=01, day=01),
             monday='1',
@@ -159,7 +159,7 @@ class CalendarTest(TestCase):
             sunday='1',
             service=Service.objects.get(service_id='FULLW'),
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_calendar_detect_incomplete_format(self):
         line = {
@@ -219,14 +219,14 @@ class CalendarDatesParserTest(TestCase):
         line = {
             'date': '20070604', 'service_id': 'FULLW', 'exception_type': '2'
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = CalendarDate(
+        expected = CalendarDate(
             service=Service.objects.get(service_id='FULLW'),
             date=date(year=2007, month=06, day=04),
             exception_type=ExceptionType.objects.get(value=2)
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_calendar_dates_detect_incomplete_date(self):
         line = {
@@ -259,7 +259,6 @@ class RoutesParserTest(TestCase):
         self.subject = RoutesParser()
 
     def fixture(self):
-        # database setup
         RouteType(name='one', description='desc', value=3).save()
         Agency(
             url='http://google.com',
@@ -282,9 +281,9 @@ class RoutesParserTest(TestCase):
             'route_color': '',
             'route_text_color': '',
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = Route(
+        expected = Route(
             agency=Agency.objects.get(agency_id='DTA'),
             route_id='AB',
             short_name='10',
@@ -292,10 +291,10 @@ class RoutesParserTest(TestCase):
             route_type=RouteType.objects.get(value=3),
             desc=None,
             url=None,
-            color=None,
-            text_color=None,
+            color='FFFFFF',
+            text_color='000000',
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_routes_detect_incomplete_format(self):
         line = {
@@ -350,9 +349,9 @@ class RoutesParserTest(TestCase):
             'route_color': '',
             'route_text_color': '',
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = Route(
+        expected = Route(
             agency=Agency.objects.get(agency_id='DTA'),
             route_id='AB',
             short_name='10',
@@ -360,10 +359,10 @@ class RoutesParserTest(TestCase):
             route_type=RouteType.objects.get(value=3),
             desc=None,
             url=None,
-            color=None,
-            text_color=None,
+            color='FFFFFF',
+            text_color='000000',
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_routes_consider_optional_url(self):
         line = {
@@ -377,9 +376,9 @@ class RoutesParserTest(TestCase):
             'route_color': '',
             'route_text_color': '',
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = Route(
+        expected = Route(
             agency=Agency.objects.get(agency_id='DTA'),
             route_id='AB',
             short_name='10',
@@ -387,10 +386,10 @@ class RoutesParserTest(TestCase):
             route_type=RouteType.objects.get(value=3),
             desc=None,
             url=None,
-            color=None,
-            text_color=None,
+            color='FFFFFF',
+            text_color='000000',
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_routes_consider_optional_color(self):
         line = {
@@ -403,9 +402,9 @@ class RoutesParserTest(TestCase):
             'route_url': '',
             'route_text_color': '',
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = Route(
+        expected = Route(
             agency=Agency.objects.get(agency_id='DTA'),
             route_id='AB',
             short_name='10',
@@ -413,10 +412,10 @@ class RoutesParserTest(TestCase):
             route_type=RouteType.objects.get(value=3),
             desc=None,
             url=None,
-            color=None,
-            text_color=None,
+            color='FFFFFF',
+            text_color='000000',
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_routes_consider_optional_text_color(self):
         line = {
@@ -429,9 +428,9 @@ class RoutesParserTest(TestCase):
             'route_url': '',
             'route_color': '',
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = Route(
+        expected = Route(
             agency=Agency.objects.get(agency_id='DTA'),
             route_id='AB',
             short_name='10',
@@ -439,10 +438,10 @@ class RoutesParserTest(TestCase):
             route_type=RouteType.objects.get(value=3),
             desc=None,
             url=None,
-            color=None,
-            text_color=None,
+            color='FFFFFF',
+            text_color='000000',
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
 
 class ShapeParserTest(TestCase):
@@ -457,15 +456,15 @@ class ShapeParserTest(TestCase):
             'shape_pt_sequence': '1',
             'shape_dist_traveled': '100'
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = Shape(
+        expected = Shape(
             shape_id='180-2',
             geopoint=BaseParser.create_geopoint('-30.027275', '-51.22919'),
             pt_sequence='1',
             dist_traveled='100',
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_routes_consider_optional_dist(self):
         line = {
@@ -474,15 +473,15 @@ class ShapeParserTest(TestCase):
             'shape_pt_lon': '-51.22919',
             'shape_pt_sequence': '1',
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = Shape(
+        expected = Shape(
             shape_id='180-2',
             geopoint=BaseParser.create_geopoint('-30.027275', '-51.22919'),
             pt_sequence='1',
             dist_traveled=None,
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_routes_detect_invalid_format(self):
         line = {
@@ -540,16 +539,16 @@ class StopTimesParserTest(TestCase):
             'arrival_time': '6:00:00',
             'departure_time': '6:00:00'
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = StopTime(
+        expected = StopTime(
             trip=Trip.objects.get(trip_id='STBA'),
             stop=Stop.objects.get(stop_id='STAGECOACH'),
             arrival_time=time(6 % 24, 0 % 60, 0 % 60),
             departure_time=time(6 % 24, 0 % 60, 0 % 60),
             stop_sequence='1'
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_routes_consider_optional_arrival_time(self):
         line = {
@@ -563,16 +562,16 @@ class StopTimesParserTest(TestCase):
             'arrival_time': '',
             'departure_time': '6:00:00'
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = StopTime(
+        expected = StopTime(
             trip=Trip.objects.get(trip_id='STBA'),
             stop=Stop.objects.get(stop_id='STAGECOACH'),
             arrival_time=time(0 % 24, 0 % 60, 0 % 60),
             departure_time=time(6 % 24, 0 % 60, 0 % 60),
             stop_sequence='1'
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_routes_consider_optional_departure_time(self):
         line = {
@@ -586,16 +585,16 @@ class StopTimesParserTest(TestCase):
             'arrival_time': '6:00:00',
             'departure_time': ''
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = StopTime(
+        expected = StopTime(
             trip=Trip.objects.get(trip_id='STBA'),
             stop=Stop.objects.get(stop_id='STAGECOACH'),
             arrival_time=time(6 % 24, 0 % 60, 0 % 60),
             departure_time=time(0 % 24, 0 % 60, 0 % 60),
             stop_sequence='1'
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_routes_consider_optional_pickup_type(self):
         line = {
@@ -608,16 +607,16 @@ class StopTimesParserTest(TestCase):
             'arrival_time': '6:00:00',
             'departure_time': '6:00:00'
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = StopTime(
+        expected = StopTime(
             trip=Trip.objects.get(trip_id='STBA'),
             stop=Stop.objects.get(stop_id='STAGECOACH'),
             arrival_time=time(6 % 24, 0 % 60, 0 % 60),
             departure_time=time(6 % 24, 0 % 60, 0 % 60),
             stop_sequence='1'
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_routes_consider_optional_drop_off_type(self):
         line = {
@@ -630,16 +629,16 @@ class StopTimesParserTest(TestCase):
             'arrival_time': '6:00:00',
             'departure_time': '6:00:00'
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = StopTime(
+        expected = StopTime(
             trip=Trip.objects.get(trip_id='STBA'),
             stop=Stop.objects.get(stop_id='STAGECOACH'),
             arrival_time=time(6 % 24, 0 % 60, 0 % 60),
             departure_time=time(6 % 24, 0 % 60, 0 % 60),
             stop_sequence='1'
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
     def test_routes_detect_invalid_time(self):
         line = {
@@ -707,9 +706,9 @@ class StopsParserTest(TestCase):
             'parent_station': '',
             'wheelchair_boarding': '1',
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = Stop(
+        expected = Stop(
             stop_id='FUR_CREEK_RES',
             code='NO_CODE',
             name='Furnace Creek Resort (Demo)',
@@ -721,7 +720,7 @@ class StopsParserTest(TestCase):
             wheelchair=WheelchairAccessible.objects.get(value=1),
             geopoint=BaseParser.create_geopoint('36.425288', '-117.133162'),
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
 
 
 class TripsParserTest(TestCase):
@@ -749,6 +748,12 @@ class TripsParserTest(TestCase):
             route_type=RouteType.objects.get(value=3),
         ).save()
         Direction(value=0, name='to Downtown').save()
+        Shape(
+            shape_id='180-2',
+            geopoint=BaseParser.create_geopoint('-30.027275', '-51.22919'),
+            pt_sequence='1',
+            dist_traveled='100',
+        ).save()
 
     def test_trips_can_be_parsed(self):
         line = {
@@ -757,22 +762,21 @@ class TripsParserTest(TestCase):
             'route_id': 'AB',
             'service_id': 'FULLW',
             'direction_id': '0',
-            'shape_id': '',
+            'shape_id': '180-2',
             'trip_headsign': 'to Bullfrog',
             'wheelchair_accessible': '1',
             'short_name': 'AB_TEST',
         }
-        (entity, created) = self.subject.parse(line)
+        (actual, created) = self.subject.parse(line)
 
-        expected_entity = Trip(
+        expected = Trip(
             trip_id='AB1',
             route=Route.objects.get(route_id='AB'),
             service=Service.objects.get(service_id='FULLW'),
             direction=Direction.objects.get(value=0),
             block=Block.objects.get(block_id='1'),
-            shape=None,
             headsign='to Bullfrog',
             wheelchair=WheelchairAccessible.objects.get(value=1),
             short_name='AB_TEST',
         )
-        self.assertEqual(entity, expected_entity)
+        self.assertEqual(actual, expected)
