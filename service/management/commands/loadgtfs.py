@@ -53,17 +53,14 @@ class Command(BaseCommand):
         for each in parsers:
             self._load(root_dir, each)
 
-    def _create_entity(self, line, parser):
-        (entity, created) = parser.parse(line)
-        entity.save()
-
     def _process_file(self, root_dir, parser):
         count = 0
         filename = parser.filename
         reader = GtfsReader(root_dir, filename)
 
         for line in reader:
-            self._create_entity(line, parser)
+            (entity, created) = parser.parse(line)
+            entity.save()
 
             # Provide feedback for long files
             count += 1
