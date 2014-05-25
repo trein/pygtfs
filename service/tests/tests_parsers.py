@@ -751,6 +751,12 @@ class TripsParserTest(TestCase):
         Shape(
             shape_id='180-2',
             geopoint=BaseParser.create_geopoint('-30.027275', '-51.22919'),
+            pt_sequence='0',
+            dist_traveled='100',
+        ).save()
+        Shape(
+            shape_id='180-2',
+            geopoint=BaseParser.create_geopoint('-30.027275', '-51.229321'),
             pt_sequence='1',
             dist_traveled='100',
         ).save()

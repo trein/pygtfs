@@ -10,6 +10,9 @@ from django.contrib.gis.db import models
 
 
 class GtfsModel(models.Model):
+    class Meta:
+        abstract = True
+
     def update_param(self, param, value):
         setattr(self, param, value)
 
@@ -460,6 +463,10 @@ class Shape(GtfsModel):
     geopoint = models.PointField()
     objects = models.GeoManager()
 
+    @staticmethod
+    def all_by_id(shape_id):
+        return Shape.objects.filter(shape_id=shape_id)
+
     def __eq__(self, other):
         return other.shape_id == self.shape_id and \
                other.geopoint == self.geopoint and \
@@ -550,6 +557,12 @@ class Trip(GtfsModel):
     # within a service day; it should not be used for destination names or
     # limited/express  designations.
     short_name = models.CharField(max_length=255, null=True, blank=True)
+
+    def has_shape(self, other_shape):
+        return self.shapes.all() \
+            .filter(shape_id=other_shape.shape_id,
+                    pt_sequence=other_shape.pt_sequence) \
+            .count() != 0
 
     def __eq__(self, other):
         # it does not compare shapes

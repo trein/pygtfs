@@ -78,7 +78,7 @@ class Command(BaseCommand):
             self._log(LOADED_FROM % (count, filename))
         except ParserException, parser_error:
             raise CommandError(parser_error.message)
-        except Exception, e:
+        except Exception as e:
             if not optional:
                 raise CommandError(ERROR_FILE_IS_REQUIRED
                                    % (filename, count) + str(e))

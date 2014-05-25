@@ -404,7 +404,9 @@ class TripsParser(BaseParser):
 
         if self.field(line, 'shape_id', optional=True):
             shape_id = self.field(line, 'shape_id')
-            entity.shapes.add(Shape.objects.get(shape_id=shape_id))
+            for shape in Shape.all_by_id(shape_id):
+                if not entity.has_shape(shape):
+                    entity.shapes.add(shape)
             entity.save()
 
         return entity, created
