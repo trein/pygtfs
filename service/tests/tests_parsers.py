@@ -7,8 +7,6 @@ ROOT_DIR = 'service/tests/data/sample-feed'
 class BaseParserTest(TestCase):
     def setUp(self):
         self.subject = CalendarDatesParser()
-        self.reader = GtfsReader(ROOT_DIR, self.subject.filename)
-        print self.reader.next()
 
 
 class AgencyTest(TestCase):
@@ -460,7 +458,7 @@ class ShapeParserTest(TestCase):
 
         expected = Shape(
             shape_id='180-2',
-            geopoint=BaseParser.create_geopoint('-30.027275', '-51.22919'),
+            geopoint=Point(-30.027275, -51.22919),
             pt_sequence='1',
             dist_traveled='100',
         )
@@ -477,7 +475,7 @@ class ShapeParserTest(TestCase):
 
         expected = Shape(
             shape_id='180-2',
-            geopoint=BaseParser.create_geopoint('-30.027275', '-51.22919'),
+            geopoint=Point(-30.027275, -51.22919),
             pt_sequence='1',
             dist_traveled=None,
         )
@@ -524,7 +522,7 @@ class StopTimesParserTest(TestCase):
         Stop(
             stop_id='STAGECOACH',
             name='stop',
-            geopoint=BaseParser.create_geopoint('-32.124', '50.123'),
+            geopoint=Point(-32.124, 50.123),
         ).save()
 
     def test_routes_can_be_parsed(self):
@@ -718,7 +716,7 @@ class StopsParserTest(TestCase):
             location_type='1',
             parent_station=None,
             wheelchair=WheelchairAccessible.objects.get(value=1),
-            geopoint=BaseParser.create_geopoint('36.425288', '-117.133162'),
+            geopoint=Point(36.425288, -117.133162),
         )
         self.assertEqual(actual, expected)
 
@@ -750,13 +748,7 @@ class TripsParserTest(TestCase):
         Direction(value=0, name='to Downtown').save()
         Shape(
             shape_id='180-2',
-            geopoint=BaseParser.create_geopoint('-30.027275', '-51.22919'),
-            pt_sequence='0',
-            dist_traveled='100',
-        ).save()
-        Shape(
-            shape_id='180-2',
-            geopoint=BaseParser.create_geopoint('-30.027275', '-51.229321'),
+            geopoint=Point(-30.027275, -51.22919),
             pt_sequence='1',
             dist_traveled='100',
         ).save()

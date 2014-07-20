@@ -1,9 +1,7 @@
-from csv import DictReader
-from django.contrib.gis.geos import fromstr
-from service.models import *
+from django.contrib.gis.geos import Point
 from datetime import time
 from datetime import date
-import os
+from service.models import *
 
 
 class ParserException(Exception):
@@ -14,17 +12,6 @@ class ParserException(Exception):
     @staticmethod
     def for_args(*args):
         return ParserException(*args)
-
-
-class GtfsReader(object):
-    def __init__(self, root_dir, filename):
-        self.reader = DictReader(open(os.path.join(root_dir, filename), 'rb'))
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        return self.reader.next()
 
 
 class BaseParser(object):
@@ -56,10 +43,6 @@ class BaseParser(object):
             raise ParserException.for_message(
                 'Field %s was empty or non-present in file' % field)
         return None
-
-    @staticmethod
-    def create_geopoint(lat, lng):
-        return fromstr('POINT(%s %s)' % (float(lat), float(lng)))
 
 
 class AgencyParser(BaseParser):
@@ -99,7 +82,7 @@ class CalendarParser(BaseParser):
         try:
             service_id = self.field(line, 'service_id')
             service = Service.objects.get(service_id=service_id)
-        except Service.DoesNotExist, e:
+        except Service.DoesNotExist as e:
             raise ParserException.for_args(e.args)
         return service
 
@@ -127,7 +110,7 @@ class CalendarDatesParser(BaseParser):
         try:
             type_id = self.field(line, 'exception_type')
             exception_type = ExceptionType.objects.get(value=type_id)
-        except ExceptionType.DoesNotExist, e:
+        except ExceptionType.DoesNotExist as e:
             raise ParserException.for_args(e.args)
         return exception_type
 
@@ -135,7 +118,7 @@ class CalendarDatesParser(BaseParser):
         try:
             service_id = self.field(line, 'service_id')
             service = Service.objects.get(service_id=service_id)
-        except Service.DoesNotExist, e:
+        except Service.DoesNotExist as e:
             raise ParserException.for_args(e.args)
         return service
 
@@ -162,7 +145,7 @@ class RoutesParser(BaseParser):
         try:
             route_type_id = self.field(line, 'route_type')
             route_type = RouteType.objects.get(value=route_type_id)
-        except RouteType.DoesNotExist, e:
+        except RouteType.DoesNotExist as e:
             raise ParserException.for_args(e.args)
         return route_type
 
@@ -172,7 +155,7 @@ class RoutesParser(BaseParser):
             try:
                 agency_id = self.field(line, 'agency_id', optional=True)
                 agency = Agency.objects.get(agency_id=agency_id)
-            except Agency.DoesNotExist, e:
+            except Agency.DoesNotExist as e:
                 raise ParserException.for_args(e.args)
                 # raise ParserException('No agency with id %s '
                 #                       % check_self.field(line, 'agency_id'))
@@ -203,9 +186,9 @@ class ShapesParser(BaseParser):
         BaseParser.__init__(self, 'shapes.txt', optional=True)
 
     def parse(self, line):
-        geopoint = self.create_geopoint(
-            self.field(line, 'shape_pt_lat'),
-            self.field(line, 'shape_pt_lon'))
+        geopoint = Point(
+            float(self.field(line, 'shape_pt_lat')),
+            float(self.field(line, 'shape_pt_lon')))
         mandatory = {
             'geopoint': geopoint,
             'shape_id': self.field(line, 'shape_id'),
@@ -241,7 +224,7 @@ class StopTimesParser(BaseParser):
             field = self.field(line, 'arrival_time')
             try:
                 (hour, minute, sec) = map(int, field.split(':'))
-            except ValueError, e:
+            except ValueError as e:
                 raise ParserException.for_args(e.args)
         arrival_time = time(hour % 24, minute % 60, sec % 60)
         return arrival_time
@@ -253,7 +236,7 @@ class StopTimesParser(BaseParser):
             field = self.field(line, 'departure_time')
             try:
                 (hour, minute, sec) = map(int, field.split(':'))
-            except ValueError, e:
+            except ValueError as e:
                 raise ParserException.for_args(e.args)
         departure_time = time(hour % 24, minute % 60, sec % 60)
         return departure_time
@@ -273,14 +256,14 @@ class StopTimesParser(BaseParser):
     def parse_trip(self, line):
         try:
             trip = Trip.objects.get(trip_id=self.field(line, 'trip_id'))
-        except Trip.DoesNotExist, e:
+        except Trip.DoesNotExist as e:
             raise ParserException.for_args(e.args)
         return trip
 
     def parse_stop(self, line):
         try:
             stop = Stop.objects.get(stop_id=self.field(line, 'stop_id'))
-        except Stop.DoesNotExist, e:
+        except Stop.DoesNotExist as e:
             raise ParserException.for_args(e.args)
         return stop
 
@@ -332,9 +315,9 @@ class StopsParser(BaseParser):
         return wheelchair
 
     def parse(self, line):
-        point = self.create_geopoint(
-            self.field(line, 'stop_lat'),
-            self.field(line, 'stop_lon'))
+        point = Point(
+            float(self.field(line, 'stop_lat')),
+            float(self.field(line, 'stop_lon')))
         mandatory = {
             'stop_id': self.field(line, 'stop_id'),
             'name': self.field(line, 'stop_name'),
