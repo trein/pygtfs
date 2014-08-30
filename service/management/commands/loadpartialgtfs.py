@@ -1,10 +1,10 @@
 import os
-import loadgtfs
 from csv import DictReader
 from datetime import datetime
 from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
 from service import parsers
+from collections import OrderedDict
 from memory_profiler import profile
 
 IMPORT_GTFS_HELP = 'Import all the gtfs data from the specified directories'
@@ -21,6 +21,17 @@ ERROR_FILE_IS_REQUIRED = 'Could not load [%s] data properly, failed at line ' \
                          '[%s]. Fix the following problems, this file is ' \
                          'required: '
 
+PARSER_CLASSES = OrderedDict([
+    ('agency', parsers.AgencyParser),
+    ('stops', parsers.StopsParser),
+    ('routes', parsers.RoutesParser),
+    ('shapes', parsers.ShapesParser),
+    ('trips', parsers.TripsParser),
+    ('stop_times', parsers.StopTimesParser),
+    ('calendar', parsers.CalendarParser),
+    ('calendar_dates', parsers.CalendarDatesParser),
+])
+
 
 class Command(BaseCommand):
     args = 'dir'
@@ -32,7 +43,7 @@ class Command(BaseCommand):
         root_dir, parser_id = args
 
         self._log(LOADING_DIRECTORY % root_dir)
-        parser_class = loadgtfs.PARSER_CLASSES[parser_id]
+        parser_class = PARSER_CLASSES[parser_id]
         parser = parser_class()
         self._load(root_dir, parser)
 
