@@ -1,5 +1,7 @@
 django==1.6.3
 psycopg2==2.5.2
+mongoadmin==0.2
+mongoengine==0.8.7
 django-timezones>=0.2
 memory_profiler>=0.31
 psutil>=2.1.1

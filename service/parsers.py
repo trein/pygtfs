@@ -1,4 +1,3 @@
-from django.contrib.gis.geos import Point
 from datetime import time
 from datetime import date
 from service.models import *
@@ -186,9 +185,9 @@ class ShapesParser(BaseParser):
         BaseParser.__init__(self, 'shapes.txt', optional=True)
 
     def parse(self, line):
-        geopoint = Point(
+        geopoint = [
             float(self.field(line, 'shape_pt_lat')),
-            float(self.field(line, 'shape_pt_lon')))
+            float(self.field(line, 'shape_pt_lon'))]
         mandatory = {
             'geopoint': geopoint,
             'shape_id': self.field(line, 'shape_id'),
@@ -315,9 +314,9 @@ class StopsParser(BaseParser):
         return wheelchair
 
     def parse(self, line):
-        point = Point(
+        point = [
             float(self.field(line, 'stop_lat')),
-            float(self.field(line, 'stop_lon')))
+            float(self.field(line, 'stop_lon'))]
         mandatory = {
             'stop_id': self.field(line, 'stop_id'),
             'name': self.field(line, 'stop_name'),

@@ -80,7 +80,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.gis',
+    'mongoengine.django.mongo_auth',
     'service',
     'web',
 )
@@ -94,6 +94,13 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
+AUTHENTICATION_BACKENDS = (
+    'mongoengine.django.auth.MongoEngineBackend',
+)
+
+AUTH_USER_MODEL = 'mongo_auth.MongoUser'
+MONGOENGINE_USER_DOCUMENT = 'mongoengine.django.auth.User'
+
 ROOT_URLCONF = 'pygtfs.urls'
 
 WSGI_APPLICATION = 'pygtfs.wsgi.application'
@@ -102,18 +109,19 @@ WSGI_APPLICATION = 'pygtfs.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.6/ref/settings/#databases
 
+DBNAME = 'pygtfs'
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'pygtfs',
-        'USER': 'root',
-        'PASSWORD': '',
-        'HOST': ''
+        'ENGINE': 'django.db.backends.dummy'
+        # 'ENGINE': 'django_mongodb_engine',
+        # 'NAME': DBNAME,
+        # 'USER': '',
+        # 'PASSWORD': '',
+        # 'HOST': 'localhost',
+        # 'PORT': '27017',
     }
 }
-
-POSTGIS_VERSION = (2, 1, 2)
-POSTGIS_TEMPLATE = 'template_postgis'
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.6/topics/i18n/
@@ -133,3 +141,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
 
 STATIC_URL = '/static/'
+
+import mongoengine
+mongoengine.connect(DBNAME)

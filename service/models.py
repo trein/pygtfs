@@ -6,18 +6,17 @@ when possible relations are taken into account, e.g. a :py:class:`Route` class
 has a `trips` attribute, with a list of trips for the specific route.
 
 """
-from django.contrib.gis.db import models
+import mongoengine as models
 
 
-class GtfsModel(models.Model):
-    class Meta:
-        abstract = True
+class GtfsModel(object):
+    # meta = {'allow_inheritance': True}
 
     def update_param(self, param, value):
         setattr(self, param, value)
 
 
-class WheelchairAccessible(GtfsModel):
+class WheelchairAccessible(models.Document, GtfsModel):
     """Referential data"""
 
     # wheelchair_accessible Optional:
@@ -28,22 +27,22 @@ class WheelchairAccessible(GtfsModel):
     # accommodate at least one rider in a wheelchair
     # 2 - indicates that no riders in wheelchairs can be accommodated on
     # this trip
-    value = models.IntegerField()
-    name = models.CharField(max_length=255)
+    value = models.IntField()
+    name = models.StringField(max_length=255)
 
 
-class Agency(GtfsModel):
+class Agency(models.Document, GtfsModel):
     # agency_id Optional:
     # The agency_id field is an ID that uniquely identifies a transit agency. A
     # transit feed may represent data from more than one agency. The agency_id
     # is data set unique. This field is optional for transit feeds that only
     # contain data for a single agency.
-    agency_id = models.CharField(max_length=255, null=True, blank=True)
+    agency_id = models.StringField(max_length=255)
 
     # agency_name Required:
     # The agency_name field contains the full name of the transit agency.
     # Google Maps will display this name.
-    name = models.TextField()
+    name = models.StringField()
 
     # agency_url Required:
     # The agency_url field contains the URL of the transit agency. The value
@@ -62,7 +61,7 @@ class Agency(GtfsModel):
     # Please refer to http://en.wikipedia .org/wiki/List_of_tz_zones for a
     # list of valid values. If multiple agencies are specified in the feed,
     # each must have the same agency_timezone.
-    timezone = models.CharField(max_length=255)
+    timezone = models.StringField(max_length=255)
 
     # agency_lang Optional:
     # The agency_lang field contains a two-letter ISO 639-1 code for the
@@ -73,7 +72,7 @@ class Agency(GtfsModel):
     #
     # Please refer to http://www.loc.gov/standards/iso639-2/php/code_list.php
     # for a list of valid values.
-    lang = models.CharField(max_length=2, null=True, blank=True)
+    lang = models.StringField(max_length=2)
 
     # agency_phone Optional:
     # The agency_phone field contains a single voice telephone number for
@@ -82,7 +81,7 @@ class Agency(GtfsModel):
     # should contain punctuation marks to group the digits of the number.
     # Dialable text (for example, TriMet's "503-238-RIDE") is permitted,
     # but the field must not contain any other descriptive text.
-    phone = models.CharField(max_length=255, null=True, blank=True)
+    phone = models.StringField(max_length=255)
 
     # agency_fare_url Optional:
     # The agency_fare_url specifies the URL of a web  page that allows a
@@ -93,7 +92,7 @@ class Agency(GtfsModel):
     #
     # See http://www.w3.org/Addressing/URL/4_URI_Recommentations.html for a
     # description of how to create fully qualified URL values.
-    fare_url = models.URLField(null=True, blank=True)
+    fare_url = models.URLField()
 
     def __eq__(self, other):
         return other.name == self.name and \
@@ -105,20 +104,20 @@ class Agency(GtfsModel):
                other.fare_url == self.fare_url
 
 
-class Zone(GtfsModel):
+class Zone(models.Document, GtfsModel):
     # zone_id Optional:
     # The zone_id field defines the fare zone for a stop ID. Zone IDs are
     # required if you want to provide fare information using fare_rules.txt.
     # If this stop ID represents a station, the zone ID is ignored.
-    zone_id = models.CharField(max_length=255, unique=True)
+    zone_id = models.StringField(max_length=255, unique=True)
 
 
-class Stop(GtfsModel):
+class Stop(models.Document, GtfsModel):
     # stop_id Required:
     # The stop_id field contains an ID that uniquely identifies a stop or
     # station. Multiple routes may use the same stop. The stop_id is dataset
     # unique.
-    stop_id = models.CharField(max_length=255, unique=True)
+    stop_id = models.StringField(max_length=255, unique=True)
 
     # stop_code Optional:
     # The stop_code field contains short text or a number that uniquely
@@ -128,12 +127,12 @@ class Stop(GtfsModel):
     # information for a particular stop. The stop_code field should only be
     # used for stop codes that are displayed to passengers. For internal codes,
     # use stop_id. This field should be left blank for stops without a code.
-    code = models.CharField(max_length=255, null=True, blank=True)
+    code = models.StringField(max_length=255)
 
     # stop_name Required:
     # The stop_name field contains the name of a stop or station. Please use a
     # name that people will understand in the local and tourist vernacular.
-    name = models.CharField(max_length=255)
+    name = models.StringField(max_length=255)
 
     # stop_url Optional:
     # The stop_url field contains the URL of a web page about a particular stop.
@@ -144,18 +143,18 @@ class Stop(GtfsModel):
     #
     # See http://www.w3.org/Addressing/URL/4_URI_Recommentations.html
     # for a description of how to create fully qualified URL values.
-    url = models.URLField(null=True, blank=True)
+    url = models.URLField()
 
     # stop_desc Optional:
     # The stop_desc field contains a description of a stop. Please provide
     # useful, quality information. Do not simply duplicate the name of the stop.
-    desc = models.TextField(null=True, blank=True)
+    desc = models.StringField()
 
     # zone_id Optional:
     # The zone_id field defines the fare zone for a stop ID. Zone IDs are
     # required  if you want to provide fare information using fare_rules.txt.
     # If this stop ID represents a station, the zone ID is ignored.
-    zone = models.ForeignKey(Zone, null=True, blank=True)
+    zone = models.ReferenceField(Zone)
 
     # location_type Optional:
     # The location_type field identifies whether this stop ID represents a
@@ -163,14 +162,14 @@ class Stop(GtfsModel):
     #  is blank, stop IDs are treated as stops. Stations may have different
     # properties from stops when they are represented on a map or used in
     # trip planning.
-    location_type = models.IntegerField(null=True, blank=True)
+    location_type = models.IntField()
 
     # parent_station Optional:
     # For stops that are physically located inside stations, the parent_station
     # field identifies the station associated with the stop. To use this field,
     # stops.txt must also contain a row where this stop ID is assigned
     # location type=1.
-    parent_station = models.ForeignKey('self', null=True, blank=True)
+    parent_station = models.ReferenceField('self')
 
     # stop_timezone Optional:
     # The stop_timezone field contains the timezone in which this stop or
@@ -191,7 +190,7 @@ class Stop(GtfsModel):
     # in the timezone specified by agency_timezone in agency.txt. This
     # ensures that the time values in a trip always increase over the course of
     # a trip, regardless of which timezones the trip crosses.
-    # timezone =  models.CharField(max_length=255, null=True, blank=True)
+    # timezone =  models.StringField(max_length=255)
 
     # wheelchair_boarding Optional:
     # The wheelchair_boarding field identifies whether wheelchair boardings
@@ -214,10 +213,9 @@ class Stop(GtfsModel):
     # specific stop / platform
     # 2 - there exists no accessible path from outside the station to the
     # specific stop / platform
-    wheelchair = models.ForeignKey(WheelchairAccessible, null=True, blank=True)
+    wheelchair = models.ReferenceField(WheelchairAccessible)
 
-    geopoint = models.PointField(null=True, blank=True)
-    objects = models.GeoManager()
+    geopoint = models.GeoPointField()
 
     def __eq__(self, other):
         return other.stop_id == self.stop_id and \
@@ -232,7 +230,7 @@ class Stop(GtfsModel):
                other.geopoint == self.geopoint
 
 
-class RouteType(GtfsModel):
+class RouteType(models.Document, GtfsModel):
     # route_type Required:
     # The route_type field describes the type of transportation used on a
     # route. Valid values for this field are:
@@ -248,22 +246,22 @@ class RouteType(GtfsModel):
     # 6 - Gondola, Suspended cable car. Typically used for aerial cable cars
     # where the car is suspended from the cable.
     # 7 - Funicular. Any rail system designed for steep inclines.
-    name = models.CharField(max_length=50)
-    description = models.TextField()
-    value = models.IntegerField(unique=True)
+    name = models.StringField(max_length=50)
+    description = models.StringField()
+    value = models.IntField(unique=True)
 
 
-class Route(GtfsModel):
+class Route(models.Document, GtfsModel):
     # route_id Required:
     # The route_id field contains an ID that uniquely identifies a route. The
     # route_id is dataset unique.
-    route_id = models.CharField(max_length=255, unique=True)
+    route_id = models.StringField(max_length=255, unique=True)
 
     # agency_id Optional:
     # The agency_id field defines an agency for the specified route. This value
     # is referenced from the agency.txt file. Use this field when you are
     # providing data for routes from more than one agency.
-    agency = models.ForeignKey(Agency, null=True, blank=True)
+    agency = models.ReferenceField(Agency)
 
     # route_short_name Required:
     # The route_short_name contains the short name of a route. This will
@@ -274,7 +272,7 @@ class Route(GtfsModel):
     # appropriate. If the route does not have a short name, please specify a
     # route_long_name and use an empty string as the value for this field.
     # See a Google Maps screenshot highlighting the route_short_name.
-    short_name = models.CharField(max_length=255)
+    short_name = models.StringField(max_length=255)
 
     # route_long_name Required:
     # The route_long_name contains the full name of a route. This name is
@@ -284,7 +282,7 @@ class Route(GtfsModel):
     # both if appropriate. If the route does not have a long name, please
     # specify a route_short_name and use an empty string as the value for
     # this field. See a Google Maps screenshot highlighting the route_long_name.
-    long_name = models.TextField()
+    long_name = models.StringField()
 
     # route_desc Optional:
     # The route_desc field contains a description of a route. Please provide
@@ -296,7 +294,7 @@ class Route(GtfsModel):
     # additional A trains operate between Inwood-207 St and Lefferts
     # Boulevard (trains typically alternate between Lefferts Blvd and Far
     # Rockaway).
-    desc = models.TextField(null=True, blank=True)
+    desc = models.StringField()
 
     # route_type Required:
     # The route_type field describes the type of transportation used on a
@@ -313,7 +311,7 @@ class Route(GtfsModel):
     # 6 - Gondola, Suspended cable car. Typically used for aerial cable cars
     # where the car is suspended from the cable.
     # 7 - Funicular. Any rail system designed for steep inclines.
-    route_type = models.ForeignKey(RouteType)
+    route_type = models.ReferenceField(RouteType)
 
     # route_url Optional:
     # The route_url field contains the URL of a web page about that particular
@@ -323,7 +321,7 @@ class Route(GtfsModel):
     #
     # See http://www.w3.org/Addressing/URL/4_URI_Recommentations.html for a
     # description of how to create fully qualified URL values.
-    url = models.URLField(null=True, blank=True)
+    url = models.URLField()
 
     # route_color Optional:
     # In systems that have colors assigned to routes, the route_color field
@@ -336,7 +334,7 @@ class Route(GtfsModel):
     # offers a useful algorithm for evaluating  color contrast. There are
     # also helpful online tools for choosing contrasting colors, including
     # the snook.ca Color Contrast Check application.
-    color = models.CharField(max_length=6, default="FFFFFF")
+    color = models.StringField(max_length=6, default="FFFFFF")
 
     # route_text_color Optional:
     # The route_text_color field can be used to specify a legible color
@@ -346,7 +344,7 @@ class Route(GtfsModel):
     # 000000). The color difference between route_color and route_text_color
     #  should provide sufficient contrast when viewed on a black and white
     # screen.
-    text_color = models.CharField(max_length=6, default="000000")
+    text_color = models.StringField(max_length=6, default="000000")
 
     def __eq__(self, other):
         return other.route_id == self.route_id and \
@@ -360,15 +358,15 @@ class Route(GtfsModel):
                other.text_color == self.text_color
 
 
-class Service(GtfsModel):
+class Service(models.Document, GtfsModel):
     # service_id Required:
     # The service_id contains an ID that uniquely identifies a set of dates
     # when service is available for one or more routes. This value is
     # referenced from the calendar.txt or calendar_dates.txt file.
-    service_id = models.CharField(max_length=255, unique=True)
+    service_id = models.StringField(max_length=255, unique=True)
 
 
-class Direction(GtfsModel):
+class Direction(models.Document, GtfsModel):
     # direction_id Optional:
     # The direction_id field contains a binary value that indicates the
     # direction of travel for a trip. Use this field to distinguish between
@@ -391,24 +389,24 @@ class Direction(GtfsModel):
     # trip_id,...,trip_headsign,direction_id
     # 1234,...,to Airport,0
     # 1505,...,to Downtown,1
-    name = models.CharField(max_length=20)
-    value = models.IntegerField(unique=True)
+    name = models.StringField(max_length=20)
+    value = models.IntField(unique=True)
 
 
-class Block(GtfsModel):
+class Block(models.Document, GtfsModel):
     # block_id Optional:
     # The block_id field identifies the block to which the trip belongs. A block
     # consists of two or more sequential trips made using the same vehicle,
     # where a passenger can transfer from one trip to the next just by
     # staying in the vehicle. The block_id must be referenced by two or more
     # trips in trips.txt.
-    block_id = models.CharField(max_length=255, unique=True)
+    block_id = models.StringField(max_length=255, unique=True)
 
 
-class Shape(GtfsModel):
+class Shape(models.Document, GtfsModel):
     # shape_id Required:
     # The shape_id field contains an ID that uniquely identifies a shape.
-    shape_id = models.CharField(max_length=255)
+    shape_id = models.StringField(max_length=255)
 
     # shape_pt_sequence Required:
     # The shape_pt_sequence field associates the latitude and longitude
@@ -421,7 +419,7 @@ class Shape(GtfsModel):
     # A_shp,37.61956,-122.48161,0
     # A_shp,37.64430,-122.41070,6
     # A_shp,37.65863,-122.30839,11
-    pt_sequence = models.IntegerField()
+    pt_sequence = models.IntField()
 
     # shape_dist_traveled Optional:
     # When used in the shapes.txt file, the shape_dist_traveled field
@@ -441,7 +439,7 @@ class Shape(GtfsModel):
     # A_shp,37.61956,-122.48161,0,0
     # A_shp,37.64430,-122.41070,6,6.8310
     # A_shp,37.65863,-122.30839,11,15.8765
-    dist_traveled = models.FloatField(null=True, blank=True)
+    dist_traveled = models.FloatField()
 
     # shape_pt_lat Required:
     # The shape_pt_lat field associates a shape point's latitude with a shape
@@ -460,8 +458,7 @@ class Shape(GtfsModel):
     # A_shp,37.61956,-122.48161,0
     # A_shp,37.64430,-122.41070,6
     # A_shp,37.65863,-122.30839,11
-    geopoint = models.PointField()
-    objects = models.GeoManager()
+    geopoint = models.GeoPointField()
 
     @staticmethod
     def all_by_id(shape_id):
@@ -474,22 +471,22 @@ class Shape(GtfsModel):
                other.dist_traveled == self.dist_traveled
 
 
-class Trip(GtfsModel):
+class Trip(models.Document, GtfsModel):
     # trip_id Required:
     # The trip_id field contains an ID that identifies a trip. The trip_id is
     # dataset unique.
-    trip_id = models.CharField(max_length=255, unique=True)
+    trip_id = models.StringField(max_length=255, unique=True)
 
     # route_id Required:
     # The route_id field contains an ID that uniquely identifies a route. This
     # value is referenced from the routes.txt file.
-    route = models.ForeignKey(Route)
+    route = models.ReferenceField(Route)
 
     # service_id Required:
     # The service_id contains an ID that uniquely identifies a set of dates
     # when service is available for one or more routes. This value is
     # referenced from the calendar.txt or calendar_dates.txt file.
-    service = models.ForeignKey(Service)
+    service = models.ReferenceField(Service)
 
     # trip_headsign Optional:
     # The trip_headsign field contains the text that appears on a sign that
@@ -498,7 +495,7 @@ class Trip(GtfsModel):
     # the headsign changes during a trip, you can override the trip_headsign
     # by specifying values for the the stop_headsign field in stop_times.txt.
     #  See a Google Maps screenshot highlighting the headsign.
-    headsign = models.TextField(null=True, blank=True)
+    headsign = models.StringField()
 
     # direction_id Optional:
     # The direction_id field contains a binary value that indicates the
@@ -522,7 +519,7 @@ class Trip(GtfsModel):
     # trip_id,...,trip_headsign,direction_id
     # 1234,...,to Airport,0
     # 1505,...,to Downtown,1
-    direction = models.ForeignKey(Direction, null=True, blank=True)
+    direction = models.ReferenceField(Direction)
 
     # block_id Optional:
     # The block_id field identifies the block to which the trip belongs. A block
@@ -530,13 +527,13 @@ class Trip(GtfsModel):
     # where a passenger can transfer from one trip to the next just by
     # staying in the vehicle. The block_id must be referenced by two or more
     # trips in trips.txt.
-    block = models.ForeignKey(Block, null=True, blank=True)
+    block = models.ReferenceField(Block)
 
     # shape_id Optional:
     # The shape_id field contains an ID that defines a shape for the trip. This
     # value is referenced from the shapes.txt file. The shapes.txt file allows
     # you to define how a line should be drawn on the map to represent a trip.
-    shapes = models.ManyToManyField(Shape, null=True, blank=True)
+    shapes = models.ListField(models.ReferenceField(Shape))
 
     # wheelchair_accessible Optional:
     #
@@ -546,7 +543,7 @@ class Trip(GtfsModel):
     # accommodate at least one rider in a wheelchair
     # 2 - indicates that no riders in wheelchairs can be accommodated on
     # this trip
-    wheelchair = models.ForeignKey(WheelchairAccessible, null=True, blank=True)
+    wheelchair = models.ReferenceField(WheelchairAccessible)
 
     # trip_short_name Optional:
     # The trip_short_name field contains the text that appears in
@@ -556,7 +553,7 @@ class Trip(GtfsModel):
     # trip_short_name value, if provided, should uniquely identify a trip
     # within a service day; it should not be used for destination names or
     # limited/express  designations.
-    short_name = models.CharField(max_length=255, null=True, blank=True)
+    short_name = models.StringField(max_length=255)
 
     def has_shape(self, other_shape):
         return self.shapes.all() \
@@ -577,23 +574,23 @@ class Trip(GtfsModel):
                other.short_name == self.short_name
 
 
-class PickupType(GtfsModel):
+class PickupType(models.Document, GtfsModel):
     """Referential data"""
-    name = models.CharField(max_length=255)
-    value = models.IntegerField()
+    name = models.StringField(max_length=255)
+    value = models.IntField()
 
 
-class DropOffType(GtfsModel):
+class DropOffType(models.Document, GtfsModel):
     """Referential data"""
-    name = models.CharField(max_length=255)
-    value = models.IntegerField()
+    name = models.StringField(max_length=255)
+    value = models.IntField()
 
 
-class StopTime(GtfsModel):
+class StopTime(models.Document, GtfsModel):
     # trip_id Required:
     # The trip_id field contains an ID that identifies a trip. This value is
     # referenced from the trips.txt file.
-    trip = models.ForeignKey(Trip)
+    trip = models.ReferenceField(Trip)
 
     # arrival_time Required:
     # The arrival_time specifies the arrival time at a specific stop for a
@@ -626,7 +623,7 @@ class StopTime(GtfsModel):
     # 2:15:00 a.m. on the following day, the stop times would be 22:30:00 and
     #  26:15:00. Entering those stop times as 22:30:00 and 02:15:00
     # would not produce the desired results.
-    arrival_time = models.TimeField()
+    arrival_time = models.DateTimeField()
 
     # departure_time Required:
     # The departure_time specifies the departure time from a specific stop
@@ -659,7 +656,7 @@ class StopTime(GtfsModel):
     # at 2:15:00 a.m. on the following day, the stop times would be 22:30:00
     # and 26:15:00. Entering those stop times as 22:30:00 and 02:15:00
     # would not produce the desired results.
-    departure_time = models.TimeField()
+    departure_time = models.DateTimeField()
 
     # stop_id Required:
     # The stop_id field contains an ID that uniquely identifies a stop. Multiple
@@ -670,7 +667,7 @@ class StopTime(GtfsModel):
     # stop A with stop_id 1 should have stop_id 1 in all subsequent data
     # updates. If a stop is not a time point, enter blank values for arrival
     # time and departure_time.
-    stop = models.ForeignKey(Stop)
+    stop = models.ReferenceField(Stop)
 
     # stop_sequence Required:
     # The stop_sequence field identifies the order of the stops for a
@@ -679,7 +676,7 @@ class StopTime(GtfsModel):
     # stop on the trip could have a stop_sequence of 1, the second stop on
     # the trip could have a stop_sequence of 23, the third stop could have
     # a stop_sequence of 40, and so on.
-    stop_sequence = models.IntegerField()
+    stop_sequence = models.IntField()
 
     # stop_headsign Optional:
     # The stop_headsign field contains the text that appears on a sign that
@@ -688,7 +685,7 @@ class StopTime(GtfsModel):
     # stops. If this headsign is associated with an  entire trip,
     # use trip_headsign instead. See a Google Maps screenshot highlighting the
     # headsign.
-    headsign = models.TextField(null=True, blank=True)
+    headsign = models.StringField()
 
     # pickup_type Optional:
     # The pickup_type field indicates whether passengers are picked up at a
@@ -703,7 +700,7 @@ class StopTime(GtfsModel):
     # 3 - Must coordinate with driver to arrange pickup
     #
     # The default value for this field is 0.
-    pickup_type = models.ForeignKey(PickupType, null=True, blank=True)
+    pickup_type = models.ReferenceField(PickupType)
 
     # drop_off_type Optional:
     # The drop_off_type field indicates whether passengers are dropped off
@@ -719,7 +716,7 @@ class StopTime(GtfsModel):
     # 3 - Must coordinate with driver to arrange drop off
     #
     # The default value for this field is 0.
-    drop_off_type = models.ForeignKey(DropOffType, null=True, blank=True)
+    drop_off_type = models.ReferenceField(DropOffType)
 
     # shape_dist_traveled Optional:
     # When used in the stop_times.txt file, the shape_dist_traveled
@@ -734,7 +731,7 @@ class StopTime(GtfsModel):
     # they cannot be used to show reverse travel along a route. The units used
     # for shape_dist_traveled in the stop_times.txt file must match the units
     # that are used for this field in the shapes.txt file.
-    shape_dist_traveled = models.FloatField(null=True, blank=True)
+    shape_dist_traveled = models.FloatField()
 
     def __eq__(self, other):
         return other.trip == self.trip and \
@@ -748,13 +745,13 @@ class StopTime(GtfsModel):
                other.shape_dist_traveled == self.shape_dist_traveled
 
 
-class Calendar(GtfsModel):
+class Calendar(models.Document, GtfsModel):
     # service_id Required:
     # The service_id contains an ID that uniquely identifies a set of dates
     # when service is available for one or more routes. Each service_id value
     # can appear at most once in a calendar.txt file. This value is dataset
     # unique. It is referenced by the trips.txt file.
-    service = models.ForeignKey(Service)
+    service = models.ReferenceField(Service)
 
     # weekday Required:
     # The weekday field contains a binary value that indicates is valid for
@@ -769,24 +766,24 @@ class Calendar(GtfsModel):
     #
     # Note: You may list exceptions for particular dates, such as holidays,
     # in the calendar_dates.txt file.
-    monday = models.IntegerField()
-    tuesday = models.IntegerField()
-    wednesday = models.IntegerField()
-    thursday = models.IntegerField()
-    friday = models.IntegerField()
-    saturday = models.IntegerField()
-    sunday = models.IntegerField()
+    monday = models.IntField()
+    tuesday = models.IntField()
+    wednesday = models.IntField()
+    thursday = models.IntField()
+    friday = models.IntField()
+    saturday = models.IntField()
+    sunday = models.IntField()
 
     # start_date Required:
     # The start_date field contains the start date for the service. The
     # start_date field's value should be in YYYYMMDD format.
-    start_date = models.DateField()
+    start_date = models.DateTimeField()
 
     # end_date Required:
     # The end_date field contains the end date for the service. This date is
     # included in the service interval. The end_date field's value should be in
     # YYYYMMDD format.
-    end_date = models.DateField()
+    end_date = models.DateTimeField()
 
     def __eq__(self, other):
         return other.service == self.service and \
@@ -801,13 +798,13 @@ class Calendar(GtfsModel):
                other.end_date == self.end_date
 
 
-class ExceptionType(GtfsModel):
+class ExceptionType(models.Document, GtfsModel):
     """Referential data"""
-    name = models.CharField(max_length=255)
-    value = models.IntegerField()
+    name = models.StringField(max_length=255)
+    value = models.IntField()
 
 
-class CalendarDate(GtfsModel):
+class CalendarDate(models.Document, GtfsModel):
     # service_id Required:
     # The service_id contains an ID that uniquely identifies a set of dates
     # when a service exception is available for one or more routes. Each
@@ -816,14 +813,14 @@ class CalendarDate(GtfsModel):
     # calendar_dates.txt files, the information in calendar_dates.txt
     # modifies the service information specified in calendar.txt. This field
     # is referenced by the trips.txt file.
-    service = models.ForeignKey(Service)
+    service = models.ReferenceField(Service)
 
     # date Required:
     # The date field specifies a particular date when service availability is
     # different than the norm. You can use the exception_type field to indicate
     # whether service is available on the specified date. The date field's
     # value should be in YYYYMMDD format.
-    date = models.DateField()
+    date = models.DateTimeField()
 
     # exception_type Required:
     # The exception_type indicates whether service is available on the date
@@ -842,7 +839,7 @@ class CalendarDate(GtfsModel):
     # particular holiday, you would use the calendar_dates.txt file to add
     # the holiday to the holiday service_id and to remove the holiday from
     # the regular service_id schedule.
-    exception_type = models.ForeignKey(ExceptionType)
+    exception_type = models.ReferenceField(ExceptionType)
 
     def __eq__(self, other):
         return other.service == self.service and \
@@ -850,20 +847,20 @@ class CalendarDate(GtfsModel):
                other.exception_type == self.exception_type
 
 
-class Fare(GtfsModel):
-    fare_id = models.CharField(max_length=255, unique=True)
+class Fare(models.Document, GtfsModel):
+    fare_id = models.StringField(max_length=255, unique=True)
 
 
-class PaymentMethod(GtfsModel):
-    name = models.CharField(max_length=50)
-    vale = models.IntegerField()
+class PaymentMethod(models.Document, GtfsModel):
+    name = models.StringField(max_length=50)
+    vale = models.IntField()
 
 
-class FareAttribute(GtfsModel):
+class FareAttribute(models.Document, GtfsModel):
     # fare_id Required:
     # The fare_id field contains an ID that uniquely identifies a fare class.
     # The fare_id is dataset unique.
-    fare = models.ForeignKey(Fare)
+    fare = models.ReferenceField(Fare)
 
     # price Required:
     # The price field contains the fare price, in the unit specified by
@@ -874,7 +871,7 @@ class FareAttribute(GtfsModel):
     # The currency_type field defines the currency used to pay the fare.
     # Please use the ISO 4217 alphabetical currency codes which can be found
     # at the following URL: http://www.iso.org/iso/home/standards/iso4217.htm.
-    currency = models.CharField(max_length=3)
+    currency = models.StringField(max_length=3)
 
     # payment_method Required:
     # The payment_method field indicates when the fare must be paid. Valid
@@ -882,7 +879,7 @@ class FareAttribute(GtfsModel):
     #
     # 0 - Fare is paid on board.
     # 1 - Fare must be paid before boarding.
-    payment_method = models.ForeignKey(PaymentMethod)
+    payment_method = models.ReferenceField(PaymentMethod)
 
     # transfers Required:
     # The transfers field specifies the number of transfers permitted on this
@@ -892,7 +889,7 @@ class FareAttribute(GtfsModel):
     # 1 - Passenger may transfer once.
     # 2 - Passenger may transfer twice.
     # (empty) - If this field is empty, unlimited transfers are permitted.
-    transfers = models.IntegerField(null=True, blank=True)
+    transfers = models.IntField()
 
     # transfer_duration Optional:
     # The transfer_duration field specifies the length of time in
@@ -901,14 +898,14 @@ class FareAttribute(GtfsModel):
     # fare where no transfers are allowed. Unless you intend to use this
     # field to indicate ticket validity, transfer_duration should be omitted
     # or empty when transfers is set to 0.
-    transfer_duration = models.IntegerField(null=True, blank=True)
+    transfer_duration = models.IntField()
 
 
-class FareRule(GtfsModel):
+class FareRule(models.Document, GtfsModel):
     # fare_id Required:
     # The fare_id field contains an ID that uniquely identifies a fare class.
     # This value is referenced from the fare_attributes.txt file.
-    fare = models.ForeignKey(Fare)
+    fare = models.ReferenceField(Fare)
 
     # route_id Optional:
     # The route_id field associates the fare ID with a route. Route IDs are
@@ -919,7 +916,7 @@ class FareRule(GtfsModel):
     #
     # b,TSW
     # b,TSE
-    route = models.ForeignKey(Route, null=True, blank=True)
+    route = models.ReferenceField(Route)
 
     # origin_id Optional:
     # The origin_id field associates the fare ID with an origin zone ID. Zone
@@ -931,8 +928,7 @@ class FareRule(GtfsModel):
     #
     # b, , 2
     # b, , 8
-    origin = models.ForeignKey(Zone, null=True, blank=True,
-                               related_name="origin")
+    origin = models.ReferenceField(Zone)
 
     # destination_id Optional:
     # The destination_id field associates the fare ID with a destination
@@ -946,8 +942,7 @@ class FareRule(GtfsModel):
     #
     # b, , 3,4
     # b, , 3,5
-    destination = models.ForeignKey(Zone, null=True, blank=True,
-                                    related_name="destination")
+    destination = models.ReferenceField(Zone)
 
     # contains_id Optional:
     # The contains_id field associates the fare ID with a zone ID, referenced
@@ -964,16 +959,15 @@ class FareRule(GtfsModel):
     # itinerary that passes through zones 5 and 6 but not zone 7 would not
     # have fare class "c". For more detail, see FareExamples in the
     # GoogleTransitDataFeed project wiki.
-    contains = models.ForeignKey(Zone, null=True, blank=True,
-                                 related_name="contains")
+    contains = models.ReferenceField(Zone)
 
 
-class Frequency(GtfsModel):
+class Frequency(models.Document, GtfsModel):
     # trip_id Required:
     # The trip_id contains an ID that identifies a trip on which the specified
     # frequency of service applies. Trip IDs are referenced from the trips.txt
     # file.
-    trip = models.ForeignKey(Trip)
+    trip = models.ReferenceField(Trip)
 
     # start_time Required:
     # The start_time field specifies the time at which service begins with the
@@ -983,7 +977,7 @@ class Frequency(GtfsModel):
     # occurring after midnight, enter the time as a value greater than
     # 24:00:00 in HH:MM:SS local time for the day on which the trip schedule
     # begins. E.g. 25:35:00.
-    start_time = models.TimeField()
+    start_time = models.DateTimeField()
 
     # end_time Required:
     # The end_time field indicates the time at which service changes to a
@@ -993,7 +987,7 @@ class Frequency(GtfsModel):
     # the service date. For times occurring after midnight, enter the time as
     # a value greater than 24:00:00 in HH:MM:SS local time for the day on which
     # the trip schedule begins. E.g. 25:35:00.
-    end_time = models.TimeField()
+    end_time = models.DateTimeField()
 
     # headway_secs Required:
     # The headway_secs field indicates the time between departures from the
@@ -1007,7 +1001,7 @@ class Frequency(GtfsModel):
     #
     # A, 05:00:00, 07:00:00, 600
     # B, 07:00:00, 12:00:00, 1200
-    headway_secs = models.IntegerField()
+    headway_secs = models.IntField()
 
     # exact_times Optional:
     # The exact_times field determines if frequency-based trips should be
@@ -1028,24 +1022,24 @@ class Frequency(GtfsModel):
     # exact_times is 1, care must be taken to choose an end_time value that
     # is greater than the last desired trip start time but less than the last
     # desired trip start time + headway_secs.
-    exact_times = models.IntegerField(null=True, blank=True)
+    exact_times = models.IntField()
 
 
-class Transfer(GtfsModel):
+class Transfer(models.Document, GtfsModel):
     # from_stop_id Required:
     # The from_stop_id field contains a stop ID that identifies a stop or
     # station where a connection between routes begins. Stop IDs are referenced
     # from the stops.txt file. If the stop ID refers to a station that
     # contains multiple stops, this transfer rule applies to all stops in
     # that station.
-    from_stop = models.ForeignKey(Stop, related_name="from_stop")
+    from_stop = models.ReferenceField(Stop)
 
     # to_stop_id Required:
     # The to_stop_id field contains a stop ID that identifies a stop or station
     # where a connection between routes ends. Stop IDs are referenced from the
     # stops.txt file. If the stop ID refers to a station that contains
     # multiple stops, this transfer rule applies to all stops in that station.
-    to_stop = models.ForeignKey(Stop, related_name="to_stop")
+    to_stop = models.ReferenceField(Stop)
 
     # transfer_type Required:
     # The transfer_type field specifies the type of connection for the
@@ -1063,7 +1057,7 @@ class Transfer(GtfsModel):
     # specified by min_transfer_time.
     #
     # 3 - Transfers are not possible between routes at this location.
-    transfer_type = models.IntegerField()
+    transfer_type = models.IntField()
 
     # min_transfer_time Optional:
     # When a connection between routes requires an amount of time between
@@ -1074,4 +1068,4 @@ class Transfer(GtfsModel):
     # stops, including buffer time to allow for schedule variance on each
     # route. The min_transfer_time value must be entered in seconds,
     # and must be a non-negative integer.
-    min_transfer_time = models.IntegerField(null=True, blank=True)
+    min_transfer_time = models.IntField()
