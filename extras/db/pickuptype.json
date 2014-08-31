@@ -1,0 +1,4 @@
+{"_id": 1,"name": "Regularly scheduled pickup","value": 0}
+{"_id": 2,"name": "No pickup available","value": 1}
+{"_id": 3,"name": "Must phone agency to arrange pickup","value": 2}
+{"_id": 4,"name": "Must coordinate with driver to arrange pickup","value": 3}

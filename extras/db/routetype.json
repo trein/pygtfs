@@ -1,0 +1,8 @@
+{"_id": 1,"name": "Tram, Streetcar, Light rail","value": 0,"description": "Any light rail or street level system within a metropolitan area."}
+{"_id": 2,"name": "Subway, Metro","value": 1,"description": "Any underground rail system within a metropolitan area."}
+{"_id": 3,"name": "Rail","value": 2,"description": "Used for intercity or long-distance travel."}
+{"_id": 4,"name": "Bus","value": 3,"description": "Used for short- and long-distance bus routes."}
+{"_id": 5,"name": "Ferry","value": 4,"description": "Used for short- and long-distance boat service."}
+{"_id": 6,"name": "Cable car","value": 5,"description": "Used for street-level cable cars where the cable runs beneath the car."}
+{"_id": 7,"name": "Gondola, Suspended cable car. ","value": 6,"description": "Typically used for aerial cable cars where the car is suspended from the cable."}
+{"_id": 8,"name": "Funicular","value": 7,"description": "Any rail system designed for steep inclines."}
